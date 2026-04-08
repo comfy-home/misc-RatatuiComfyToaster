@@ -34,6 +34,19 @@ use textwrap::wrap;
 use crate::widget::Toast;
 
 const DEFAULT_MAX_TOAST_WIDTH: u16 = 50;
+const TOAST_HORIZONTAL_CHROME: u16 = 4;
+const TOAST_VERTICAL_CHROME: u16 = 2;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ToastPlacement {
+    pub position: ToastPosition,
+    pub offset: (i16, i16),
+}
+
+pub const DEFAULT_POSITION: ToastPlacement = ToastPlacement {
+    position: ToastPosition::BottomRight,
+    offset: (0, -1),
+};
 
 /// A toast engine for displaying temporary messages in a terminal UI.
 /// The `ToastEngine` manages the display of toasts, which are temporary messages that appear on the screen for a short duration. It supports different types of toasts (info, success, warning, error) and allows customization of their position and duration.
@@ -109,7 +122,7 @@ pub enum ToastType {
 }
 
 /// The position on the screen where the toast should be displayed. This enum defines various positions for toasts, including top-left, top-right, bottom-left, bottom-right, and center. The `ToastEngine` uses this information to calculate the appropriate area for rendering the toast based on the specified position.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum ToastPosition {
     #[default]
     TopLeft,
@@ -367,11 +380,11 @@ impl ToastBuilder {
         Self {
             message,
             toast_type: ToastType::Info,
-            position: ToastPosition::TopRight,
+            position: DEFAULT_POSITION.position,
             constraint: ToastConstraint::Auto,
             duration: None,
             keep_on: 0,
-            offset: (0, 0),
+            offset: DEFAULT_POSITION.offset,
         }
     }
 
@@ -404,6 +417,12 @@ impl ToastBuilder {
         self.offset = (x, y);
         self
     }
+
+    pub fn placement(mut self, placement: ToastPlacement) -> Self {
+        self.position = placement.position;
+        self.offset = placement.offset;
+        self
+    }
 }
 
 fn calculate_toast_area(
@@ -428,18 +447,22 @@ fn calculate_toast_area_with_layout(
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
-    const PADDING: u16 = 2;
+    let max_text_width = DEFAULT_MAX_TOAST_WIDTH.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1);
 
-    let width = match constraint {
-        Auto => std::cmp::min(DEFAULT_MAX_TOAST_WIDTH, message.len() as u16 + PADDING * 2),
-        Uniform(c) => area.centered_horizontally(*c).width,
-        Manual { width, .. } => area.centered_horizontally(*width).width,
+    let text_width = match constraint {
+        Auto => {
+            let line_width = message.lines().map(|line| line.chars().count() as u16).max().unwrap_or(1);
+            std::cmp::min(max_text_width, line_width.max(1))
+        }
+        Uniform(c) => area.centered_horizontally(*c).width.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1),
+        Manual { width, .. } => area.centered_horizontally(*width).width.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1),
     };
-    let wrapped_text = wrap(message, width as usize);
+    let width = text_width + TOAST_HORIZONTAL_CHROME;
+    let wrapped_text = wrap(message, text_width as usize);
     let height = match constraint {
-        Auto => wrapped_text.len() as u16 + PADDING,
-        Uniform(c) => area.centered_vertically(*c).height + PADDING,
-        Manual { height, .. } => area.centered_vertically(*height).height + PADDING,
+        Auto => wrapped_text.len() as u16 + TOAST_VERTICAL_CHROME,
+        Uniform(c) => area.centered_vertically(*c).height.max(TOAST_VERTICAL_CHROME + 1),
+        Manual { height, .. } => area.centered_vertically(*height).height.max(TOAST_VERTICAL_CHROME + 1),
     };
 
     let rect = if let Center = position {
