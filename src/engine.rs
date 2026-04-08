@@ -27,6 +27,7 @@ use std::marker::PhantomData;
 
 use ratatui::{
     layout::{Constraint, Rect, Size},
+    style::Color,
     widgets::{Clear, Widget, WidgetRef},
 };
 use textwrap::wrap;
@@ -47,6 +48,8 @@ pub const DEFAULT_POSITION: ToastPlacement = ToastPlacement {
     position: ToastPosition::BottomRight,
     offset: (0, -1),
 };
+
+pub const DEFAULT_BG: Color = Color::DarkGray;
 
 /// A toast engine for displaying temporary messages in a terminal UI.
 /// The `ToastEngine` manages the display of toasts, which are temporary messages that appear on the screen for a short duration. It supports different types of toasts (info, success, warning, error) and allows customization of their position and duration.
@@ -181,6 +184,7 @@ pub enum ToastMessage {
 pub struct ToastBuilder {
     message: Cow<'static, str>,
     toast_type: ToastType,
+    toast_bg: Color,
     position: ToastPosition,
     constraint: ToastConstraint,
     duration: Option<Duration>,
@@ -245,7 +249,7 @@ where
         let area = calculate_toast_area(&toast, self.area);
         let message = toast.message.into_owned();
         self.current_toast = Some(ActiveToast {
-            toast: Toast::new(&message, toast.toast_type),
+            toast: Toast::new(&message, toast.toast_type, toast.toast_bg),
             message,
             position: toast.position,
             constraint: toast.constraint,
@@ -380,6 +384,7 @@ impl ToastBuilder {
         Self {
             message,
             toast_type: ToastType::Info,
+            toast_bg: DEFAULT_BG,
             position: DEFAULT_POSITION.position,
             constraint: ToastConstraint::Auto,
             duration: None,
@@ -390,6 +395,11 @@ impl ToastBuilder {
 
     pub fn toast_type(mut self, toast_type: ToastType) -> Self {
         self.toast_type = toast_type;
+        self
+    }
+
+    pub fn toast_bg(mut self, toast_bg: Color) -> Self {
+        self.toast_bg = toast_bg;
         self
     }
 
@@ -587,5 +597,21 @@ mod tests {
         let interaction = engine.handle_shortcut(ToastShortcut::Dismiss);
         assert_eq!(interaction, ToastInteraction::Dismissed);
         assert!(!engine.has_toast());
+    }
+
+    #[test]
+    fn default_background_is_dark_gray() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("bg".into()));
+
+        assert_eq!(engine.current_toast.as_ref().map(|toast| toast.toast.bg), Some(DEFAULT_BG));
+    }
+
+    #[test]
+    fn builder_background_overrides_default() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("bg".into()).toast_bg(Color::Blue));
+
+        assert_eq!(engine.current_toast.as_ref().map(|toast| toast.toast.bg), Some(Color::Blue));
     }
 }
