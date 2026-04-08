@@ -1,10 +1,10 @@
 [package]
 name = "ratatui-comfy-toaster"
 description = "An advanced toast engine for ratatui"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
-license = "SA-PS"
+license = "SA-PS:DA"
 homepage = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 readme = "README.md"
