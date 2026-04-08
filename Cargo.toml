@@ -10,8 +10,10 @@ repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 readme = "README.md"
 keywords = ["tui", "cli", "ratatui", "comfy", "toaster", "notifications", "toast"]
 categories = ["command-line-utilities", "command-line-interface"]
+
+[package.metadata]
 attributions = ["JayanAXHF <sunil.chdry@gmail.com> for the original ratatui-toaster."]
-attrib_timeline = [ratatui-comfy-toaster v0.1.0 is based on ratatui-toaster v0.1.2]
+attrib_timeline = ["ratatui-comfy-toaster v0.1.0 is based on ratatui-toaster v0.1.2"]
 attrib_link = ["https://crates.io/crates/ratatui-toaster"]
 
 [dependencies]
