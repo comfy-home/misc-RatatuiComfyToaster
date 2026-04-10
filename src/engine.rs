@@ -672,4 +672,17 @@ mod tests {
         assert!(area.y + area.height < blocker.y + blocker.height);
         assert!(area.y < blocker.y);
     }
+
+    #[test]
+    fn avoiding_top_left_overlap_moves_toast_down() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("sticky".into()).position(ToastPosition::TopLeft));
+
+        let blocker = Rect::new(0, 0, 20, 4);
+        engine.set_area_avoiding(Rect::new(0, 0, 80, 25), &[blocker]);
+
+        let area = engine.toast_area();
+        assert!(area.y > blocker.y);
+        assert!(area.y >= blocker.y + blocker.height);
+    }
 }
