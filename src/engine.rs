@@ -365,17 +365,62 @@ where
 
     /// Sets the area for the toast engine. This method allows you to update the area where toasts will be displayed, which can be useful if the layout of your terminal UI changes and you need to adjust the toast display area accordingly.
     pub fn set_area(&mut self, area: Rect) {
+        self.set_area_avoiding(area, &[]);
+    }
+
+    /// Sets the area for the toast engine while avoiding overlap with already-occupied regions.
+    pub fn set_area_avoiding(&mut self, area: Rect, occupied: &[Rect]) {
         self.area = area;
         if let Some(toast) = &mut self.current_toast {
-            toast.area = calculate_toast_area_with_layout(
+            let desired_area = calculate_toast_area_with_layout(
                 &toast.message,
                 toast.position,
                 &toast.constraint,
                 toast.offset,
                 self.area,
             );
+            toast.area = avoid_occupied_areas(desired_area, self.area, occupied, toast.position);
         }
     }
+}
+
+fn avoid_occupied_areas(mut area: Rect, bounds: Rect, occupied: &[Rect], position: ToastPosition) -> Rect {
+    let mut blockers = occupied
+        .iter()
+        .copied()
+        .filter(|blocker| blocker.width > 0 && blocker.height > 0 && horizontal_overlap(area, *blocker))
+        .collect::<Vec<_>>();
+
+    match position {
+        ToastPosition::BottomLeft | ToastPosition::BottomRight => blockers.sort_by(|left, right| right.y.cmp(&left.y)),
+        ToastPosition::TopLeft | ToastPosition::TopRight => blockers.sort_by(|left, right| left.y.cmp(&right.y)),
+        ToastPosition::Center => return area,
+    }
+
+    for blocker in blockers {
+        if !rects_overlap(area, blocker) {
+            continue;
+        }
+
+        area.y = match position {
+            ToastPosition::BottomLeft | ToastPosition::BottomRight => blocker.y.saturating_sub(area.height.saturating_add(1)),
+            ToastPosition::TopLeft | ToastPosition::TopRight => blocker.y.saturating_add(blocker.height).saturating_add(1),
+            ToastPosition::Center => area.y,
+        };
+        area = apply_offset(area, bounds, (0, 0));
+    }
+
+    area
+}
+
+fn horizontal_overlap(left: Rect, right: Rect) -> bool {
+    left.x < right.x.saturating_add(right.width) && right.x < left.x.saturating_add(left.width)
+}
+
+fn rects_overlap(left: Rect, right: Rect) -> bool {
+    horizontal_overlap(left, right)
+        && left.y < right.y.saturating_add(right.height)
+        && right.y < left.y.saturating_add(left.height)
 }
 
 impl ToastBuilder {
@@ -613,5 +658,18 @@ mod tests {
         engine.show_toast(ToastBuilder::new("bg".into()).toast_bg(Color::Blue));
 
         assert_eq!(engine.current_toast.as_ref().map(|toast| toast.toast.bg), Some(Color::Blue));
+    }
+
+    #[test]
+    fn avoiding_bottom_right_overlap_moves_toast_up() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("sticky".into()).position(ToastPosition::BottomRight));
+
+        let blocker = Rect::new(60, 20, 20, 4);
+        engine.set_area_avoiding(Rect::new(0, 0, 80, 25), &[blocker]);
+
+        let area = engine.toast_area();
+        assert!(area.y + area.height < blocker.y + blocker.height);
+        assert!(area.y < blocker.y);
     }
 }
