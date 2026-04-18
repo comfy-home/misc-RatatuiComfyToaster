@@ -18,12 +18,12 @@
 //! # Animating Toasts
 //! The current implementation does not include animations for showing or hiding toasts. However, you can
 //! use libraries like [tachyonfx](https://github.com/ratatui/tachyonfx) to add animations to your toasts. You would need to implement the animation logic in your event handling code, triggering animations when showing or hiding toasts based on the `ToastMessage` actions.
+#[cfg(not(feature = "tokio"))]
+use std::marker::PhantomData;
 use std::{
     borrow::Cow,
     time::{Duration, Instant},
 };
-#[cfg(not(feature = "tokio"))]
-use std::marker::PhantomData;
 
 use ratatui::{
     layout::{Constraint, Rect, Size},
@@ -255,7 +255,11 @@ where
             constraint: toast.constraint,
             offset: toast.offset,
             keep_on,
-            expires_at: if keep_on { None } else { Some(Instant::now() + duration) },
+            expires_at: if keep_on {
+                None
+            } else {
+                Some(Instant::now() + duration)
+            },
             area,
         });
 
@@ -273,7 +277,10 @@ where
 
     /// Get the area where the toast will be rendered.
     pub fn toast_area(&self) -> Rect {
-        self.current_toast.as_ref().map(|toast| toast.area).unwrap_or_default()
+        self.current_toast
+            .as_ref()
+            .map(|toast| toast.area)
+            .unwrap_or_default()
     }
 
     /// Whether a toast is currently being displayed.
@@ -303,11 +310,15 @@ where
     }
 
     pub fn current_message(&self) -> Option<&str> {
-        self.current_toast.as_ref().map(|toast| toast.message.as_str())
+        self.current_toast
+            .as_ref()
+            .map(|toast| toast.message.as_str())
     }
 
     pub fn is_keep_on(&self) -> bool {
-        self.current_toast.as_ref().is_some_and(|toast| toast.keep_on)
+        self.current_toast
+            .as_ref()
+            .is_some_and(|toast| toast.keep_on)
     }
 
     pub fn contains(&self, column: u16, row: u16) -> bool {
@@ -384,16 +395,27 @@ where
     }
 }
 
-fn avoid_occupied_areas(mut area: Rect, bounds: Rect, occupied: &[Rect], position: ToastPosition) -> Rect {
+fn avoid_occupied_areas(
+    mut area: Rect,
+    bounds: Rect,
+    occupied: &[Rect],
+    position: ToastPosition,
+) -> Rect {
     let mut blockers = occupied
         .iter()
         .copied()
-        .filter(|blocker| blocker.width > 0 && blocker.height > 0 && horizontal_overlap(area, *blocker))
+        .filter(|blocker| {
+            blocker.width > 0 && blocker.height > 0 && horizontal_overlap(area, *blocker)
+        })
         .collect::<Vec<_>>();
 
     match position {
-        ToastPosition::BottomLeft | ToastPosition::BottomRight => blockers.sort_by(|left, right| right.y.cmp(&left.y)),
-        ToastPosition::TopLeft | ToastPosition::TopRight => blockers.sort_by(|left, right| left.y.cmp(&right.y)),
+        ToastPosition::BottomLeft | ToastPosition::BottomRight => {
+            blockers.sort_by(|left, right| right.y.cmp(&left.y))
+        }
+        ToastPosition::TopLeft | ToastPosition::TopRight => {
+            blockers.sort_by(|left, right| left.y.cmp(&right.y))
+        }
         ToastPosition::Center => return area,
     }
 
@@ -403,8 +425,12 @@ fn avoid_occupied_areas(mut area: Rect, bounds: Rect, occupied: &[Rect], positio
         }
 
         area.y = match position {
-            ToastPosition::BottomLeft | ToastPosition::BottomRight => blocker.y.saturating_sub(area.height.saturating_add(1)),
-            ToastPosition::TopLeft | ToastPosition::TopRight => blocker.y.saturating_add(blocker.height).saturating_add(1),
+            ToastPosition::BottomLeft | ToastPosition::BottomRight => {
+                blocker.y.saturating_sub(area.height.saturating_add(1))
+            }
+            ToastPosition::TopLeft | ToastPosition::TopRight => {
+                blocker.y.saturating_add(blocker.height).saturating_add(1)
+            }
             ToastPosition::Center => area.y,
         };
         area = apply_offset(area, bounds, (0, 0));
@@ -502,22 +528,42 @@ fn calculate_toast_area_with_layout(
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
-    let max_text_width = DEFAULT_MAX_TOAST_WIDTH.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1);
+    let max_text_width = DEFAULT_MAX_TOAST_WIDTH
+        .saturating_sub(TOAST_HORIZONTAL_CHROME)
+        .max(1);
 
     let text_width = match constraint {
         Auto => {
-            let line_width = message.lines().map(|line| line.chars().count() as u16).max().unwrap_or(1);
+            let line_width = message
+                .lines()
+                .map(|line| line.chars().count() as u16)
+                .max()
+                .unwrap_or(1);
             std::cmp::min(max_text_width, line_width.max(1))
         }
-        Uniform(c) => area.centered_horizontally(*c).width.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1),
-        Manual { width, .. } => area.centered_horizontally(*width).width.saturating_sub(TOAST_HORIZONTAL_CHROME).max(1),
+        Uniform(c) => area
+            .centered_horizontally(*c)
+            .width
+            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .max(1),
+        Manual { width, .. } => area
+            .centered_horizontally(*width)
+            .width
+            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .max(1),
     };
     let width = text_width + TOAST_HORIZONTAL_CHROME;
     let wrapped_text = wrap(message, text_width as usize);
     let height = match constraint {
         Auto => wrapped_text.len() as u16 + TOAST_VERTICAL_CHROME,
-        Uniform(c) => area.centered_vertically(*c).height.max(TOAST_VERTICAL_CHROME + 1),
-        Manual { height, .. } => area.centered_vertically(*height).height.max(TOAST_VERTICAL_CHROME + 1),
+        Uniform(c) => area
+            .centered_vertically(*c)
+            .height
+            .max(TOAST_VERTICAL_CHROME + 1),
+        Manual { height, .. } => area
+            .centered_vertically(*height)
+            .height
+            .max(TOAST_VERTICAL_CHROME + 1),
     };
 
     let rect = if let Center = position {
@@ -637,7 +683,10 @@ mod tests {
         engine.show_toast(ToastBuilder::new("copy me".into()).keep_on(1));
 
         let interaction = engine.handle_shortcut(ToastShortcut::Copy);
-        assert_eq!(interaction, ToastInteraction::CopyRequested("copy me".to_string()));
+        assert_eq!(
+            interaction,
+            ToastInteraction::CopyRequested("copy me".to_string())
+        );
 
         let interaction = engine.handle_shortcut(ToastShortcut::Dismiss);
         assert_eq!(interaction, ToastInteraction::Dismissed);
@@ -649,7 +698,10 @@ mod tests {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.show_toast(ToastBuilder::new("bg".into()));
 
-        assert_eq!(engine.current_toast.as_ref().map(|toast| toast.toast.bg), Some(DEFAULT_BG));
+        assert_eq!(
+            engine.current_toast.as_ref().map(|toast| toast.toast.bg),
+            Some(DEFAULT_BG)
+        );
     }
 
     #[test]
@@ -657,7 +709,10 @@ mod tests {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.show_toast(ToastBuilder::new("bg".into()).toast_bg(Color::Blue));
 
-        assert_eq!(engine.current_toast.as_ref().map(|toast| toast.toast.bg), Some(Color::Blue));
+        assert_eq!(
+            engine.current_toast.as_ref().map(|toast| toast.toast.bg),
+            Some(Color::Blue)
+        );
     }
 
     #[test]

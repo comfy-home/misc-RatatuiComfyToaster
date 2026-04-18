@@ -26,7 +26,7 @@ tokio = ["dep:tokio"]
 
 [[example]]
 name = "examples"
-path = "examples/example_{n}.rs"
+path = "examples/example_1.rs"
 
 [dev-dependencies]
 anyhow = "1.0.102"
