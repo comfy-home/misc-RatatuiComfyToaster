@@ -411,10 +411,10 @@ fn avoid_occupied_areas(
 
     match position {
         ToastPosition::BottomLeft | ToastPosition::BottomRight => {
-            blockers.sort_by(|left, right| right.y.cmp(&left.y))
+            blockers.sort_by_key(|blocker| std::cmp::Reverse(blocker.y))
         }
         ToastPosition::TopLeft | ToastPosition::TopRight => {
-            blockers.sort_by(|left, right| left.y.cmp(&right.y))
+            blockers.sort_by_key(|blocker| blocker.y)
         }
         ToastPosition::Center => return area,
     }
