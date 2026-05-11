@@ -88,17 +88,15 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = { path = "path/to/comfy-toaster" }
+ratatui-comfy-toaster = "0.2.2"
 ```
-
-_soon to be added to crates.io_
 
 ### Features
 
 - **`tokio`** — Enable async timer support for automatic toast dismissal
 
 ```toml
-ratatui-comfy-toaster = { path = "...", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.2.2", features = ["tokio"] }
 ```
 
 ---
@@ -281,7 +279,7 @@ Enable the `tokio` feature for automatic toast dismissal via async timers:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = { path = "...", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.2.2", features = ["tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 ```
 

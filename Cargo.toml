@@ -4,11 +4,11 @@ description = "An advanced toast engine for ratatui"
 version = "0.2.2"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
-license = "SA-PS:DA"
+license-file = "LICENSE.md"
 homepage = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 readme = "README.md"
-keywords = ["tui", "cli", "ratatui", "comfy", "toaster", "notifications", "toast"]
+keywords = ["tui", "ratatui", "toast", "notifications", "comfy"]
 categories = ["command-line-utilities", "command-line-interface"]
 
 [package.metadata]
