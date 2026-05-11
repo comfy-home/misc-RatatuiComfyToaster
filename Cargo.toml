@@ -1,7 +1,7 @@
 [package]
 name = "ratatui-comfy-toaster"
 description = "An advanced toast engine for ratatui"
-version = "0.1.1"
+version = "0.2.2"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
 license = "SA-PS:DA"
@@ -23,10 +23,6 @@ tokio = { version = "1.50", features = ["rt-multi-thread"], optional = true }
 
 [features]
 tokio = ["dep:tokio"]
-
-[[example]]
-name = "examples"
-path = "examples/example_1.rs"
 
 [dev-dependencies]
 anyhow = "1.0.102"
