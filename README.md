@@ -84,6 +84,13 @@ Perfect for ensuring toasts don't cover important UI components like dialogs or 
 
 ## Installation
 
+From your project's directory:
+```
+cargo add ratatui-comfy-toaster
+```
+
+Or...
+
 Add to your `Cargo.toml`:
 
 ```toml
