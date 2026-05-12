@@ -6,6 +6,7 @@
 //! The `tokio` feature can be used to tightly integrate the toast engine with applications that use an event based pattern. In your
 //! `Action` enum (or equivalent), add a variant that can be converted from `ToastMessage`. For example:
 //! ```rust
+//! use ratatui_comfy_toaster::ToastMessage;
 //! enum Action {
 //!     ShowToast(ToastMessage),
 //!     // other variants...
@@ -22,6 +23,7 @@
 use std::marker::PhantomData;
 use std::{
     borrow::Cow,
+    collections::VecDeque,
     time::{Duration, Instant},
 };
 
@@ -62,11 +64,12 @@ where
 {
     area: Rect,
     default_duration: Duration,
+    max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
     tx: Option<PhantomData<A>>,
-    current_toast: Option<ActiveToast>,
+    queue: VecDeque<ActiveToast>,
 }
 
 /// A builder for creating a `ToastEngine`. It allows you to set the default duration for toasts, and an optional channel sender for sending toast messages (if using the `tokio` feature).
@@ -76,6 +79,7 @@ where
 {
     area: Rect,
     default_duration: Duration,
+    max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
@@ -91,8 +95,18 @@ where
         Self {
             area,
             default_duration: Duration::from_secs(3),
+            max_queue_depth: 4,
             tx: None,
         }
+    }
+
+    /// Sets the maximum number of toasts that can be queued at once.
+    /// When the queue is full, incoming timed toasts are dropped. Sticky toasts
+    /// displace the oldest timed toast if needed to ensure they are never lost.
+    /// Defaults to 4.
+    pub fn max_queue_depth(mut self, depth: usize) -> Self {
+        self.max_queue_depth = depth.max(1);
+        self
     }
 
     /// Sets the default duration for toasts. This duration will be used when showing a toast if no specific duration is provided.
@@ -213,6 +227,7 @@ where
         ToastEngine {
             area,
             default_duration,
+            max_queue_depth,
             tx,
             ..
         }: Self,
@@ -220,8 +235,9 @@ where
         Self {
             area,
             default_duration,
+            max_queue_depth,
             tx,
-            current_toast: None,
+            queue: VecDeque::new(),
         }
     }
 
@@ -230,6 +246,7 @@ where
         ToastEngineBuilder {
             area,
             default_duration,
+            max_queue_depth,
             tx,
             ..
         }: ToastEngineBuilder<A>,
@@ -237,18 +254,37 @@ where
         Self {
             area,
             default_duration,
+            max_queue_depth,
             tx,
-            current_toast: None,
+            queue: VecDeque::new(),
         }
     }
 
-    /// Shows a toast message using the provided `ToastBuilder`. This method calculates the area for the toast based on the message content and the specified position, creates a new `Toast` instance, and sets it as the current toast to be rendered. If the `tokio` feature is enabled and a channel sender is configured, it also spawns a task to automatically hide the toast after the default duration.
+    /// Enqueues a toast. The front of the queue is always the currently displayed toast.
+    ///
+    /// Queueing rules:
+    /// - If the queue is at `max_queue_depth`, incoming **timed** toasts are silently dropped.
+    /// - If the queue is at `max_queue_depth` and the incoming toast is **sticky**, the oldest
+    ///   timed toast is displaced to make room. If no timed toast exists the sticky toast is
+    ///   dropped (all slots already hold sticky messages that require explicit dismissal).
     pub fn show_toast(&mut self, toast: ToastBuilder) {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
+
+        if self.queue.len() >= self.max_queue_depth {
+            if !keep_on {
+                return;
+            }
+            if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
+                self.queue.remove(pos);
+            } else {
+                return;
+            }
+        }
+
         let area = calculate_toast_area(&toast, self.area);
         let message = toast.message.into_owned();
-        self.current_toast = Some(ActiveToast {
+        self.queue.push_back(ActiveToast {
             toast: Toast::new(&message, toast.toast_type, toast.toast_bg),
             message,
             position: toast.position,
@@ -277,52 +313,57 @@ where
 
     /// Get the area where the toast will be rendered.
     pub fn toast_area(&self) -> Rect {
-        self.current_toast
-            .as_ref()
+        self.queue
+            .front()
             .map(|toast| toast.area)
             .unwrap_or_default()
     }
 
     /// Whether a toast is currently being displayed.
     pub fn has_toast(&self) -> bool {
-        self.current_toast.is_some()
+        !self.queue.is_empty()
     }
 
+    /// Returns the number of toasts currently queued.
+    pub fn queue_len(&self) -> usize {
+        self.queue.len()
+    }
+
+    /// Advances the queue: if the front toast has expired it is removed and the
+    /// next toast (if any) becomes active. Returns `true` if a toast was removed.
     pub fn tick(&mut self) -> bool {
         let expired = self
-            .current_toast
-            .as_ref()
+            .queue
+            .front()
             .and_then(|toast| toast.expires_at)
             .is_some_and(|expires_at| Instant::now() >= expires_at);
 
         if expired {
-            self.current_toast = None;
+            self.queue.pop_front();
             return true;
         }
 
         false
     }
 
+    /// Dismisses the front (currently displayed) toast and advances the queue.
     pub fn dismiss(&mut self) -> bool {
-        let had_toast = self.current_toast.is_some();
-        self.current_toast = None;
-        had_toast
+        if self.queue.pop_front().is_some() {
+            return true;
+        }
+        false
     }
 
     pub fn current_message(&self) -> Option<&str> {
-        self.current_toast
-            .as_ref()
-            .map(|toast| toast.message.as_str())
+        self.queue.front().map(|toast| toast.message.as_str())
     }
 
     pub fn is_keep_on(&self) -> bool {
-        self.current_toast
-            .as_ref()
-            .is_some_and(|toast| toast.keep_on)
+        self.queue.front().is_some_and(|toast| toast.keep_on)
     }
 
     pub fn contains(&self, column: u16, row: u16) -> bool {
-        self.current_toast.as_ref().is_some_and(|toast| {
+        self.queue.front().is_some_and(|toast| {
             column >= toast.area.x
                 && column < toast.area.x + toast.area.width
                 && row >= toast.area.y
@@ -382,7 +423,7 @@ where
     /// Sets the area for the toast engine while avoiding overlap with already-occupied regions.
     pub fn set_area_avoiding(&mut self, area: Rect, occupied: &[Rect]) {
         self.area = area;
-        if let Some(toast) = &mut self.current_toast {
+        if let Some(toast) = self.queue.front_mut() {
             let desired_area = calculate_toast_area_with_layout(
                 &toast.message,
                 toast.position,
@@ -642,7 +683,7 @@ where
     A: From<ToastMessage> + Send + 'static,
 {
     fn render_ref(&self, _area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        if let Some(toast) = &self.current_toast {
+        if let Some(toast) = self.queue.front() {
             Clear.render(toast.area, buf);
             toast.toast.render_ref(toast.area, buf);
         }
@@ -699,7 +740,7 @@ mod tests {
         engine.show_toast(ToastBuilder::new("bg".into()));
 
         assert_eq!(
-            engine.current_toast.as_ref().map(|toast| toast.toast.bg),
+            engine.queue.front().map(|toast| toast.toast.bg),
             Some(DEFAULT_BG)
         );
     }
@@ -710,7 +751,7 @@ mod tests {
         engine.show_toast(ToastBuilder::new("bg".into()).toast_bg(Color::Blue));
 
         assert_eq!(
-            engine.current_toast.as_ref().map(|toast| toast.toast.bg),
+            engine.queue.front().map(|toast| toast.toast.bg),
             Some(Color::Blue)
         );
     }
@@ -739,5 +780,80 @@ mod tests {
         let area = engine.toast_area();
         assert!(area.y > blocker.y);
         assert!(area.y >= blocker.y + blocker.height);
+    }
+
+    #[test]
+    fn timed_toasts_queue_and_drain_in_order() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(3)
+            .build();
+        engine.show_toast(ToastBuilder::new("first".into()));
+        engine.show_toast(ToastBuilder::new("second".into()));
+        engine.show_toast(ToastBuilder::new("third".into()));
+
+        assert_eq!(engine.queue_len(), 3);
+        assert_eq!(engine.current_message(), Some("first"));
+
+        engine.dismiss();
+        assert_eq!(engine.current_message(), Some("second"));
+
+        engine.dismiss();
+        assert_eq!(engine.current_message(), Some("third"));
+
+        engine.dismiss();
+        assert!(!engine.has_toast());
+    }
+
+    #[test]
+    fn timed_toast_dropped_when_queue_full() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(2)
+            .build();
+        engine.show_toast(ToastBuilder::new("a".into()));
+        engine.show_toast(ToastBuilder::new("b".into()));
+        engine.show_toast(ToastBuilder::new("overflow".into()));
+
+        assert_eq!(engine.queue_len(), 2);
+        assert_eq!(engine.current_message(), Some("a"));
+    }
+
+    #[test]
+    fn sticky_displaces_oldest_timed_when_queue_full() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(2)
+            .build();
+        engine.show_toast(ToastBuilder::new("timed-a".into()));
+        engine.show_toast(ToastBuilder::new("timed-b".into()));
+        engine.show_toast(ToastBuilder::new("important".into()).keep_on(1));
+
+        assert_eq!(engine.queue_len(), 2);
+        let messages: Vec<_> = engine.queue.iter().map(|t| t.message.as_str()).collect();
+        assert!(messages.contains(&"important"), "sticky must be in queue");
+    }
+
+    #[test]
+    fn sticky_blocked_by_all_sticky_queue() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(2)
+            .build();
+        engine.show_toast(ToastBuilder::new("sticky-1".into()).keep_on(1));
+        engine.show_toast(ToastBuilder::new("sticky-2".into()).keep_on(1));
+        engine.show_toast(ToastBuilder::new("sticky-3-dropped".into()).keep_on(1));
+
+        assert_eq!(engine.queue_len(), 2);
+        assert_eq!(engine.current_message(), Some("sticky-1"));
+    }
+
+    #[test]
+    fn sticky_blocks_queue_advancement() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("sticky-front".into()).keep_on(1));
+        engine.show_toast(ToastBuilder::new("next".into()));
+
+        assert!(!engine.tick(), "sticky should not be ticked away");
+        assert_eq!(engine.current_message(), Some("sticky-front"));
+
+        engine.dismiss();
+        assert_eq!(engine.current_message(), Some("next"));
     }
 }
