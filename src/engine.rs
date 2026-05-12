@@ -329,21 +329,14 @@ where
         self.queue.len()
     }
 
-    /// Advances the queue: if the front toast has expired it is removed and the
-    /// next toast (if any) becomes active. Returns `true` if a toast was removed.
+    /// Removes all expired timed toasts from the queue. Returns `true` if any
+    /// were removed.
     pub fn tick(&mut self) -> bool {
-        let expired = self
-            .queue
-            .front()
-            .and_then(|toast| toast.expires_at)
-            .is_some_and(|expires_at| Instant::now() >= expires_at);
-
-        if expired {
-            self.queue.pop_front();
-            return true;
-        }
-
-        false
+        let now = Instant::now();
+        let before = self.queue.len();
+        self.queue
+            .retain(|toast| toast.expires_at.is_none_or(|exp| now < exp));
+        self.queue.len() < before
     }
 
     /// Dismisses the front (currently displayed) toast and advances the queue.
@@ -377,12 +370,15 @@ where
         row: u16,
         button: ToastMouseButton,
     ) -> ToastInteraction {
-        if !self.contains(column, row) || !self.is_keep_on() {
+        if !self.contains(column, row) {
             return ToastInteraction::None;
         }
 
         match button {
             ToastMouseButton::Left => {
+                if !self.is_keep_on() {
+                    return ToastInteraction::None;
+                }
                 self.dismiss();
                 ToastInteraction::Dismissed
             }
@@ -394,16 +390,15 @@ where
     }
 
     pub fn handle_shortcut(&mut self, shortcut: ToastShortcut) -> ToastInteraction {
-        if !self.is_keep_on() {
-            return ToastInteraction::None;
-        }
-
         match shortcut {
             ToastShortcut::Copy => self
                 .current_message()
                 .map(|message| ToastInteraction::CopyRequested(message.to_string()))
                 .unwrap_or(ToastInteraction::None),
             ToastShortcut::Dismiss => {
+                if !self.is_keep_on() {
+                    return ToastInteraction::None;
+                }
                 self.dismiss();
                 ToastInteraction::Dismissed
             }
@@ -423,7 +418,8 @@ where
     /// Sets the area for the toast engine while avoiding overlap with already-occupied regions.
     pub fn set_area_avoiding(&mut self, area: Rect, occupied: &[Rect]) {
         self.area = area;
-        if let Some(toast) = self.queue.front_mut() {
+        let mut stacked: Vec<Rect> = occupied.to_vec();
+        for toast in self.queue.iter_mut() {
             let desired_area = calculate_toast_area_with_layout(
                 &toast.message,
                 toast.position,
@@ -431,7 +427,8 @@ where
                 toast.offset,
                 self.area,
             );
-            toast.area = avoid_occupied_areas(desired_area, self.area, occupied, toast.position);
+            toast.area = avoid_occupied_areas(desired_area, self.area, &stacked, toast.position);
+            stacked.push(toast.area);
         }
     }
 }
@@ -683,7 +680,7 @@ where
     A: From<ToastMessage> + Send + 'static,
 {
     fn render_ref(&self, _area: Rect, buf: &mut ratatui::buffer::Buffer) {
-        if let Some(toast) = self.queue.front() {
+        for toast in self.queue.iter() {
             Clear.render(toast.area, buf);
             toast.toast.render_ref(toast.area, buf);
         }
