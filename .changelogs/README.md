@@ -2,6 +2,28 @@
 
 Newest archived changelogs first. When multiple archived files represent the same version, only the newest archive is included here.
 
+## Changelog `v0.3.1` <sup><div align="end">🗓️ 2026-05-12</div></sup>
+
+### 🔧 Maintenance
+
+* CG app version bump to v0.3.1   _(be6caae)_
+
+### ♻️ Refactor
+
+* Improve toast queue management by removing expired toasts and optimizing area calculations   _(33d72fe)_
+
+* Optimize toast expiration check in queue management   _(67ace50)_
+
+### 📝 Other
+
+* Merge pull request #2 (via ComfyGit)   _(9073851)_
+
+* Merge pull request #3 (via ComfyGit)   _(7f57b6d)_
+
+* Merge pull request #4 (via ComfyGit)   _(041653d)_
+
+---
+
 ## Changelog `v0.2.2` <sup><div align="end">🗓️ 2026-05-12</div></sup>
 
 ### 🧩 Features

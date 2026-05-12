@@ -10,6 +10,30 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ---
 
+<details><summary>👀 What's new in v0.3.1 ...</summary>
+
+## Changelog `v0.3.1` <sub><sup>← `v0.3.0` (Previous Public Version)</sup></sub> <sup><div align="end">🗓️ 2026-05-12</div></sup>
+
+### ♻️ Refactor
+
+* Improve toast queue management by removing expired toasts and optimizing area calculations <sub><sup><sup>_33d72fe_</sup></sup></sub>
+
+* Optimize toast expiration check in queue management <sub><sup><sup>_67ace50_</sup></sup></sub>
+
+#### This fixes:
+* issues encountered when stacking multiple toasts
+* enheriting of sticky attrib from error parent toast by info toast child (eg copy info)
+
+
+---
+... ✨ made with [ComfyGit](https://github.com/comfy-home/ComfyGit)
+
+
+---
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)</sup>
+
+---
+
 
 
 ---
