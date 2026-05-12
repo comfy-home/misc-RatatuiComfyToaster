@@ -10,7 +10,11 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ---
 
-## What's New
+
+
+---
+
+## Features:
 
 ### 🆕 Sticky (Persistent) Toasts
 
