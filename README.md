@@ -70,6 +70,27 @@ ToastBuilder::new("Saved".into()).placement(placement)
 
 Long messages are automatically wrapped instead of clipped, ensuring content is always readable.
 
+### 📬 Toast Queue
+
+Toasts are now queued rather than overwritten. Multiple messages can be pending at once:
+
+- A FIFO queue holds up to `max_queue_depth` toasts (default: **4**, configurable)
+- **Timed toasts** drain automatically from the front as each expires or is dismissed
+- **Sticky toasts** block the queue — the next toast only becomes visible after the sticky one is dismissed
+- When the queue is full, incoming timed toasts are **silently dropped**
+- When the queue is full and an incoming toast is **sticky**, the oldest timed toast is displaced to make room; if all slots are sticky, the new one is dropped
+
+```rust
+let mut engine: ToastEngine<()> = ToastEngineBuilder::new(area)
+    .max_queue_depth(6)
+    .build();
+
+engine.show_toast(ToastBuilder::new("Step 1 complete".into()).toast_type(ToastType::Success));
+engine.show_toast(ToastBuilder::new("Step 2 complete".into()).toast_type(ToastType::Success));
+engine.show_toast(ToastBuilder::new("Build failed!".into()).toast_type(ToastType::Error).keep_on(1));
+// All three are queued; the error toast will block until dismissed
+```
+
 ### 🚫 Area Avoidance
 
 Toasts can avoid overlapping with other UI elements:
@@ -95,7 +116,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = "0.2.2"
+ratatui-comfy-toaster = "0.3.0"
 ```
 
 ### Features
@@ -103,7 +124,7 @@ ratatui-comfy-toaster = "0.2.2"
 - **`tokio`** — Enable async timer support for automatic toast dismissal
 
 ```toml
-ratatui-comfy-toaster = { version = "0.2.2", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.3.0", features = ["tokio"] }
 ```
 
 ---
@@ -208,21 +229,31 @@ match engine.handle_shortcut(ToastShortcut::Copy) {
 | `keep_on(1)` | Make sticky (no auto-dismiss) |
 | `constraint(c)` | Set size constraints |
 
+### Engine Builder Methods
+
+| Method | Description |
+|--------|-------------|
+| `new(area)` | Create builder with display area |
+| `default_duration(d)` | Set default toast duration (default: 3s) |
+| `max_queue_depth(n)` | Set max queued toasts (default: 4, min: 1) |
+| `action_tx(tx)` | Set tokio channel sender *(tokio feature only)* |
+
 ### Engine Methods
 
 | Method | Description |
 |--------|-------------|
-| `show_toast(builder)` | Display a toast |
-| `hide_toast()` / `dismiss()` | Hide current toast |
-| `has_toast()` | Check if toast is visible |
-| `is_keep_on()` | Check if current toast is sticky |
-| `toast_area()` | Get toast rectangle |
-| `contains(col, row)` | Check if point is inside toast |
+| `show_toast(builder)` | Enqueue a toast |
+| `hide_toast()` / `dismiss()` | Dismiss front toast and advance queue |
+| `has_toast()` | Check if any toast is queued |
+| `queue_len()` | Number of toasts currently queued |
+| `is_keep_on()` | Check if front toast is sticky |
+| `toast_area()` | Get front toast rectangle |
+| `contains(col, row)` | Check if point is inside front toast |
 | `handle_click(col, row, button)` | Handle mouse click |
 | `handle_shortcut(shortcut)` | Handle keyboard shortcut |
 | `set_area(rect)` | Update display area |
 | `set_area_avoiding(rect, occupied)` | Update area with overlap avoidance |
-| `tick()` | Check for auto-dismissal |
+| `tick()` | Advance queue if front toast has expired |
 
 ### Constants
 
@@ -269,7 +300,16 @@ engine.show_toast(
 // User right-clicks or presses Copy shortcut to copy path
 ```
 
-### 4. Non-Overlapping Notifications
+### 4. Queued Progress Steps
+
+```rust
+// Queue multiple messages — each shown in order as the previous expires
+engine.show_toast(ToastBuilder::new("Fetching…".into()));
+engine.show_toast(ToastBuilder::new("Compiling…".into()));
+engine.show_toast(ToastBuilder::new("Done.".into()).toast_type(ToastType::Success));
+```
+
+### 5. Non-Overlapping Notifications
 
 ```rust
 // Ensure toast doesn't cover dialog
@@ -286,7 +326,7 @@ Enable the `tokio` feature for automatic toast dismissal via async timers:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = { version = "0.2.2", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.3.0", features = ["tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 ```
 
