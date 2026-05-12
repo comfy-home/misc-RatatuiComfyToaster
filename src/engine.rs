@@ -335,7 +335,7 @@ where
         let now = Instant::now();
         let before = self.queue.len();
         self.queue
-            .retain(|toast| toast.expires_at.map_or(true, |exp| now < exp));
+            .retain(|toast| toast.expires_at.is_none_or(|exp| now < exp));
         self.queue.len() < before
     }
 
