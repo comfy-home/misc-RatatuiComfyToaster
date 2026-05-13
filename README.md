@@ -10,6 +10,36 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ---
 
+<details><summary>👀 What's new in v0.3.2 ...</summary>
+
+### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+#### **1. &nbsp;&nbsp;&nbsp;Expiration Progress Bar**
+- Now your timed toasts can display an optional expiry bar
+- Available are 3 styles:
+    - FullBlock: ████
+    - HalfBlock: ▄▄▄▄ 
+    - Minimal: ____
+- See documentation for more info...
+
+#### **2. &nbsp;&nbsp;&nbsp;Toasts now support two border modes:**
+- `ToastBorderMode::SideRails` keeps the original left/right look
+- `ToastBorderMode::Full` renders a full box border for stronger separation
+    - It's useful mainly with `Center` positioned toasts
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br><br>
+
+
+---
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/releases/tag/v0.3.2)</sup>
+
+---
+
+</details>
+
 
 
 ---
