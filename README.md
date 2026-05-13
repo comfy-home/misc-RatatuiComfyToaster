@@ -79,6 +79,64 @@ ToastBuilder::new("Deployment queued".into())
 
 Or use the default dark gray (`DEFAULT_BG`) for consistent styling.
 
+### 🧱 Toast Borders
+
+Toasts now support two border modes:
+
+- `ToastBorderMode::SideRails` keeps the original left/right look
+- `ToastBorderMode::Full` renders a full box border for stronger separation
+
+You can set this globally:
+
+```rust
+use ratatui_comfy_toaster::{ToastBorderMode, ToastEngineBuilder};
+
+let engine = ToastEngineBuilder::new(area)
+    .default_border_mode(ToastBorderMode::Full)
+    .build();
+```
+
+Or override it per toast:
+
+```rust
+use ratatui_comfy_toaster::{ToastBorderMode, ToastBuilder};
+
+ToastBuilder::new("Centered message".into())
+    .border_mode(ToastBorderMode::Full);
+```
+
+### ⏳ Timed Toast Progress Bar
+
+Timed toasts can show a one-row progress bar that depletes as the toast approaches expiration.
+Sticky toasts ignore the progress bar automatically.
+
+Available styles:
+
+- `ToastProgressBarStyle::FullBlock` uses `█`
+- `ToastProgressBarStyle::HalfBlock` uses `▄`
+- `ToastProgressBarStyle::Minimal` uses `_`
+
+Set it globally:
+
+```rust
+use ratatui_comfy_toaster::{ToastEngineBuilder, ToastProgressBarStyle};
+
+let engine = ToastEngineBuilder::new(area)
+    .default_progress_bar(true)
+    .default_progress_bar_style(ToastProgressBarStyle::HalfBlock)
+    .build();
+```
+
+Or override it per toast:
+
+```rust
+use ratatui_comfy_toaster::{ToastBuilder, ToastProgressBarStyle};
+
+ToastBuilder::new("Saved successfully".into())
+    .show_progress_bar(true)
+    .progress_bar_style(ToastProgressBarStyle::Minimal);
+```
+
 ### 📍 Placement API
 
 Convenient `placement()` method to set both position and offset in one call:
