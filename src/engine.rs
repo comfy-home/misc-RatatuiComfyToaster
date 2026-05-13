@@ -46,6 +46,14 @@ pub enum ToastBorderMode {
     Full,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum ToastProgressBarStyle {
+    #[default]
+    FullBlock,
+    HalfBlock,
+    Minimal,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ToastPlacement {
     pub position: ToastPosition,
@@ -72,6 +80,7 @@ where
     default_duration: Duration,
     default_border_mode: ToastBorderMode,
     default_progress_bar: bool,
+    default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -89,6 +98,7 @@ where
     default_duration: Duration,
     default_border_mode: ToastBorderMode,
     default_progress_bar: bool,
+    default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -107,6 +117,7 @@ where
             default_duration: Duration::from_secs(3),
             default_border_mode: ToastBorderMode::SideRails,
             default_progress_bar: false,
+            default_progress_bar_style: ToastProgressBarStyle::FullBlock,
             max_queue_depth: 4,
             tx: None,
         }
@@ -136,6 +147,15 @@ where
     /// Enables or disables the bottom progress bar for timed toasts by default.
     pub fn default_progress_bar(mut self, show_progress_bar: bool) -> Self {
         self.default_progress_bar = show_progress_bar;
+        self
+    }
+
+    /// Sets the default visual style for timed toast progress bars.
+    pub fn default_progress_bar_style(
+        mut self,
+        progress_bar_style: ToastProgressBarStyle,
+    ) -> Self {
+        self.default_progress_bar_style = progress_bar_style;
         self
     }
 
@@ -230,6 +250,7 @@ pub struct ToastBuilder {
     offset: (i16, i16),
     border_mode: Option<ToastBorderMode>,
     show_progress_bar: Option<bool>,
+    progress_bar_style: Option<ToastProgressBarStyle>,
 }
 
 #[derive(Debug, Clone)]
@@ -243,6 +264,7 @@ struct ActiveToast {
     keep_on: bool,
     duration: Option<Duration>,
     show_progress_bar: bool,
+    progress_bar_style: ToastProgressBarStyle,
     expires_at: Option<Instant>,
     area: Rect,
 }
@@ -258,6 +280,7 @@ where
             default_duration,
             default_border_mode,
             default_progress_bar,
+            default_progress_bar_style,
             max_queue_depth,
             tx,
             ..
@@ -268,6 +291,7 @@ where
             default_duration,
             default_border_mode,
             default_progress_bar,
+            default_progress_bar_style,
             max_queue_depth,
             tx,
             queue: VecDeque::new(),
@@ -281,6 +305,7 @@ where
             default_duration,
             default_border_mode,
             default_progress_bar,
+            default_progress_bar_style,
             max_queue_depth,
             tx,
             ..
@@ -291,6 +316,7 @@ where
             default_duration,
             default_border_mode,
             default_progress_bar,
+            default_progress_bar_style,
             max_queue_depth,
             tx,
             queue: VecDeque::new(),
@@ -310,6 +336,9 @@ where
         let border_mode = toast.border_mode.unwrap_or(self.default_border_mode);
         let show_progress_bar =
             toast.show_progress_bar.unwrap_or(self.default_progress_bar) && !keep_on;
+        let progress_bar_style = toast
+            .progress_bar_style
+            .unwrap_or(self.default_progress_bar_style);
 
         if self.queue.len() >= self.max_queue_depth {
             if !keep_on {
@@ -325,7 +354,13 @@ where
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
         let message = toast.message.into_owned();
         self.queue.push_back(ActiveToast {
-            toast: Toast::new(&message, toast.toast_type, toast.toast_bg, border_mode),
+            toast: Toast::new(
+                &message,
+                toast.toast_type,
+                toast.toast_bg,
+                border_mode,
+                progress_bar_style,
+            ),
             message,
             position: toast.position,
             constraint: toast.constraint,
@@ -334,6 +369,7 @@ where
             keep_on,
             duration: if keep_on { None } else { Some(duration) },
             show_progress_bar,
+            progress_bar_style,
             expires_at: if keep_on {
                 None
             } else {
@@ -565,6 +601,7 @@ impl ToastBuilder {
             offset: DEFAULT_POSITION.offset,
             border_mode: None,
             show_progress_bar: None,
+            progress_bar_style: None,
         }
     }
 
@@ -610,6 +647,11 @@ impl ToastBuilder {
 
     pub fn show_progress_bar(mut self, show_progress_bar: bool) -> Self {
         self.show_progress_bar = Some(show_progress_bar);
+        self
+    }
+
+    pub fn progress_bar_style(mut self, progress_bar_style: ToastProgressBarStyle) -> Self {
+        self.progress_bar_style = Some(progress_bar_style);
         self
     }
 
@@ -783,6 +825,7 @@ where
             toast.toast
                 .clone()
                 .with_progress_ratio(toast.progress_ratio())
+                .with_progress_bar_style(toast.progress_bar_style)
                 .render_ref(toast.area, buf);
         }
     }
