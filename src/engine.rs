@@ -151,10 +151,7 @@ where
     }
 
     /// Sets the default visual style for timed toast progress bars.
-    pub fn default_progress_bar_style(
-        mut self,
-        progress_bar_style: ToastProgressBarStyle,
-    ) -> Self {
+    pub fn default_progress_bar_style(mut self, progress_bar_style: ToastProgressBarStyle) -> Self {
         self.default_progress_bar_style = progress_bar_style;
         self
     }
@@ -822,7 +819,8 @@ where
     fn render_ref(&self, _area: Rect, buf: &mut ratatui::buffer::Buffer) {
         for toast in self.queue.iter() {
             Clear.render(toast.area, buf);
-            toast.toast
+            toast
+                .toast
                 .clone()
                 .with_progress_ratio(toast.progress_ratio())
                 .with_progress_bar_style(toast.progress_bar_style)

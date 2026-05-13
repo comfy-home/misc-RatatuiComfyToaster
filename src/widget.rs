@@ -76,7 +76,11 @@ fn render_progress_bar(
         } else {
             empty_symbol
         };
-        let fg = if offset < filled { color } else { Color::DarkGray };
+        let fg = if offset < filled {
+            color
+        } else {
+            Color::DarkGray
+        };
         buf[(area.x + offset, area.y)]
             .set_symbol(symbol)
             .set_fg(fg)
