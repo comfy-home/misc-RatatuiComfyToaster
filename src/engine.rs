@@ -38,7 +38,13 @@ use crate::widget::Toast;
 
 const DEFAULT_MAX_TOAST_WIDTH: u16 = 50;
 const TOAST_HORIZONTAL_CHROME: u16 = 4;
-const TOAST_VERTICAL_CHROME: u16 = 2;
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum ToastBorderMode {
+    #[default]
+    SideRails,
+    Full,
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ToastPlacement {
@@ -64,6 +70,8 @@ where
 {
     area: Rect,
     default_duration: Duration,
+    default_border_mode: ToastBorderMode,
+    default_progress_bar: bool,
     max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -79,6 +87,8 @@ where
 {
     area: Rect,
     default_duration: Duration,
+    default_border_mode: ToastBorderMode,
+    default_progress_bar: bool,
     max_queue_depth: usize,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -95,6 +105,8 @@ where
         Self {
             area,
             default_duration: Duration::from_secs(3),
+            default_border_mode: ToastBorderMode::SideRails,
+            default_progress_bar: false,
             max_queue_depth: 4,
             tx: None,
         }
@@ -112,6 +124,18 @@ where
     /// Sets the default duration for toasts. This duration will be used when showing a toast if no specific duration is provided.
     pub fn default_duration(mut self, duration: Duration) -> Self {
         self.default_duration = duration;
+        self
+    }
+
+    /// Sets the default border mode for newly shown toasts.
+    pub fn default_border_mode(mut self, border_mode: ToastBorderMode) -> Self {
+        self.default_border_mode = border_mode;
+        self
+    }
+
+    /// Enables or disables the bottom progress bar for timed toasts by default.
+    pub fn default_progress_bar(mut self, show_progress_bar: bool) -> Self {
+        self.default_progress_bar = show_progress_bar;
         self
     }
 
@@ -204,6 +228,8 @@ pub struct ToastBuilder {
     duration: Option<Duration>,
     keep_on: u8,
     offset: (i16, i16),
+    border_mode: Option<ToastBorderMode>,
+    show_progress_bar: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -213,7 +239,10 @@ struct ActiveToast {
     position: ToastPosition,
     constraint: ToastConstraint,
     offset: (i16, i16),
+    border_mode: ToastBorderMode,
     keep_on: bool,
+    duration: Option<Duration>,
+    show_progress_bar: bool,
     expires_at: Option<Instant>,
     area: Rect,
 }
@@ -227,6 +256,8 @@ where
         ToastEngine {
             area,
             default_duration,
+            default_border_mode,
+            default_progress_bar,
             max_queue_depth,
             tx,
             ..
@@ -235,6 +266,8 @@ where
         Self {
             area,
             default_duration,
+            default_border_mode,
+            default_progress_bar,
             max_queue_depth,
             tx,
             queue: VecDeque::new(),
@@ -246,6 +279,8 @@ where
         ToastEngineBuilder {
             area,
             default_duration,
+            default_border_mode,
+            default_progress_bar,
             max_queue_depth,
             tx,
             ..
@@ -254,6 +289,8 @@ where
         Self {
             area,
             default_duration,
+            default_border_mode,
+            default_progress_bar,
             max_queue_depth,
             tx,
             queue: VecDeque::new(),
@@ -270,6 +307,9 @@ where
     pub fn show_toast(&mut self, toast: ToastBuilder) {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
+        let border_mode = toast.border_mode.unwrap_or(self.default_border_mode);
+        let show_progress_bar =
+            toast.show_progress_bar.unwrap_or(self.default_progress_bar) && !keep_on;
 
         if self.queue.len() >= self.max_queue_depth {
             if !keep_on {
@@ -282,15 +322,18 @@ where
             }
         }
 
-        let area = calculate_toast_area(&toast, self.area);
+        let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
         let message = toast.message.into_owned();
         self.queue.push_back(ActiveToast {
-            toast: Toast::new(&message, toast.toast_type, toast.toast_bg),
+            toast: Toast::new(&message, toast.toast_type, toast.toast_bg, border_mode),
             message,
             position: toast.position,
             constraint: toast.constraint,
             offset: toast.offset,
+            border_mode,
             keep_on,
+            duration: if keep_on { None } else { Some(duration) },
+            show_progress_bar,
             expires_at: if keep_on {
                 None
             } else {
@@ -426,10 +469,31 @@ where
                 &toast.constraint,
                 toast.offset,
                 self.area,
+                toast.border_mode,
+                toast.show_progress_bar,
             );
             toast.area = avoid_occupied_areas(desired_area, self.area, &stacked, toast.position);
             stacked.push(toast.area);
         }
+    }
+}
+
+impl ActiveToast {
+    fn progress_ratio(&self) -> Option<f64> {
+        if !self.show_progress_bar {
+            return None;
+        }
+
+        let duration = self.duration?;
+        if duration.is_zero() {
+            return Some(0.0);
+        }
+
+        let expires_at = self.expires_at?;
+        let remaining = expires_at
+            .checked_duration_since(Instant::now())
+            .unwrap_or_default();
+        Some((remaining.as_secs_f64() / duration.as_secs_f64()).clamp(0.0, 1.0))
     }
 }
 
@@ -499,6 +563,8 @@ impl ToastBuilder {
             duration: None,
             keep_on: 0,
             offset: DEFAULT_POSITION.offset,
+            border_mode: None,
+            show_progress_bar: None,
         }
     }
 
@@ -537,6 +603,16 @@ impl ToastBuilder {
         self
     }
 
+    pub fn border_mode(mut self, border_mode: ToastBorderMode) -> Self {
+        self.border_mode = Some(border_mode);
+        self
+    }
+
+    pub fn show_progress_bar(mut self, show_progress_bar: bool) -> Self {
+        self.show_progress_bar = Some(show_progress_bar);
+        self
+    }
+
     pub fn placement(mut self, placement: ToastPlacement) -> Self {
         self.position = placement.position;
         self.offset = placement.offset;
@@ -553,8 +629,18 @@ fn calculate_toast_area(
         ..
     }: &ToastBuilder,
     area: Rect,
+    border_mode: ToastBorderMode,
+    show_progress_bar: bool,
 ) -> Rect {
-    calculate_toast_area_with_layout(message, *position, constraint, *offset, area)
+    calculate_toast_area_with_layout(
+        message,
+        *position,
+        constraint,
+        *offset,
+        area,
+        border_mode,
+        show_progress_bar,
+    )
 }
 
 fn calculate_toast_area_with_layout(
@@ -563,9 +649,12 @@ fn calculate_toast_area_with_layout(
     constraint: &ToastConstraint,
     offset: (i16, i16),
     area: Rect,
+    border_mode: ToastBorderMode,
+    show_progress_bar: bool,
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
+    let toast_vertical_chrome = toast_vertical_chrome(border_mode, show_progress_bar);
     let max_text_width = DEFAULT_MAX_TOAST_WIDTH
         .saturating_sub(TOAST_HORIZONTAL_CHROME)
         .max(1);
@@ -593,15 +682,15 @@ fn calculate_toast_area_with_layout(
     let width = text_width + TOAST_HORIZONTAL_CHROME;
     let wrapped_text = wrap(message, text_width as usize);
     let height = match constraint {
-        Auto => wrapped_text.len() as u16 + TOAST_VERTICAL_CHROME,
+        Auto => wrapped_text.len() as u16 + toast_vertical_chrome,
         Uniform(c) => area
             .centered_vertically(*c)
             .height
-            .max(TOAST_VERTICAL_CHROME + 1),
+            .max(toast_vertical_chrome + 1),
         Manual { height, .. } => area
             .centered_vertically(*height)
             .height
-            .max(TOAST_VERTICAL_CHROME + 1),
+            .max(toast_vertical_chrome + 1),
     };
 
     let rect = if let Center = position {
@@ -611,6 +700,15 @@ fn calculate_toast_area_with_layout(
     };
 
     apply_offset(rect, area, offset)
+}
+
+fn toast_vertical_chrome(border_mode: ToastBorderMode, show_progress_bar: bool) -> u16 {
+    let border_rows = match border_mode {
+        ToastBorderMode::SideRails => 0,
+        ToastBorderMode::Full => 2,
+    };
+    let progress_rows = u16::from(show_progress_bar);
+    2 + border_rows + progress_rows
 }
 
 fn apply_offset(rect: Rect, bounds: Rect, (x_offset, y_offset): (i16, i16)) -> Rect {
@@ -682,7 +780,10 @@ where
     fn render_ref(&self, _area: Rect, buf: &mut ratatui::buffer::Buffer) {
         for toast in self.queue.iter() {
             Clear.render(toast.area, buf);
-            toast.toast.render_ref(toast.area, buf);
+            toast.toast
+                .clone()
+                .with_progress_ratio(toast.progress_ratio())
+                .render_ref(toast.area, buf);
         }
     }
 }
@@ -852,5 +953,65 @@ mod tests {
 
         engine.dismiss();
         assert_eq!(engine.current_message(), Some("next"));
+    }
+
+    #[test]
+    fn progress_bar_increases_auto_height_for_timed_toasts() {
+        let normal = calculate_toast_area_with_layout(
+            "hello",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::SideRails,
+            false,
+        );
+        let with_progress = calculate_toast_area_with_layout(
+            "hello",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::SideRails,
+            true,
+        );
+
+        assert_eq!(with_progress.height, normal.height + 1);
+    }
+
+    #[test]
+    fn full_border_increases_auto_height() {
+        let side_rails = calculate_toast_area_with_layout(
+            "hello",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::SideRails,
+            false,
+        );
+        let full = calculate_toast_area_with_layout(
+            "hello",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::Full,
+            false,
+        );
+
+        assert_eq!(full.height, side_rails.height + 2);
+    }
+
+    #[test]
+    fn sticky_toasts_ignore_progress_bar_requests() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .default_progress_bar(true)
+            .build();
+        engine.show_toast(ToastBuilder::new("sticky".into()).keep_on(1));
+
+        let toast = engine.queue.front().expect("toast queued");
+        assert!(!toast.show_progress_bar);
+        assert_eq!(toast.progress_ratio(), None);
     }
 }
