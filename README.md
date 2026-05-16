@@ -132,7 +132,7 @@ Gapped separator rows use the toast type color for dot/line glyphs. Toasts witho
 
 Copy actions return `title + "\n" + message` (separator rows are not copied).
 
-### 🎛️ Title presets
+### 🎛️ Toast Title presets
 
 Named layout presets live in `presets.rs` and apply title layout, separator, alignment, and highlight in one call:
 
@@ -158,6 +158,27 @@ ToastBuilder::new("Target path cannot be empty".into())
 | `GappedDotHighlightCenter` | gapped | dot | center | yes |
 
 `CompactHighlightStart` extends the highlight band through the left border column so it meets the side rail with no gray gap.
+
+#### Toast Titile Preset examples
+
+<sub>_example error `'scope-3' target path cannot be empty` toast in bottom left corner, with default gray bg, and with preset:_</sub>
+
+`MessageOnly`
+
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/0-MessageOnly.png" width="350" alt="example">
+
+`GappedLineStart`
+
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/1-GappedLineStart.png" width="350" alt="example">
+
+`GappedDotHighlightCenter`
+
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/2-GappedDotHighlightCenter.png" width="350" alt="example">
+
+`CompactHighlightStart`
+
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/3-CompactHighlightStart.png" width="350" alt="example">
+
 
 ### 🧱 Toast Borders
 
