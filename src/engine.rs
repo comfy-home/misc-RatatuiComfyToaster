@@ -237,6 +237,7 @@ pub enum ToastMessage {
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
 #[derive(Debug, Default)]
 pub struct ToastBuilder {
+    title: Option<Cow<'static, str>>,
     message: Cow<'static, str>,
     toast_type: ToastType,
     toast_bg: Color,
@@ -253,7 +254,9 @@ pub struct ToastBuilder {
 #[derive(Debug, Clone)]
 struct ActiveToast {
     toast: Toast,
+    title: Option<String>,
     message: String,
+    copy_text: String,
     position: ToastPosition,
     constraint: ToastConstraint,
     offset: (i16, i16),
@@ -349,7 +352,16 @@ where
         }
 
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
+        let title = toast
+            .title
+            .as_ref()
+            .map(|title| title.clone().into_owned())
+            .filter(|title| !title.trim().is_empty());
         let message = toast.message.into_owned();
+        let copy_text = title
+            .as_ref()
+            .map(|title| format!("{title}\n{message}"))
+            .unwrap_or_else(|| message.clone());
         self.queue.push_back(ActiveToast {
             toast: Toast::new(
                 &message,
@@ -357,8 +369,11 @@ where
                 toast.toast_bg,
                 border_mode,
                 progress_bar_style,
-            ),
+            )
+            .with_title(title.clone()),
+            title,
             message,
+            copy_text,
             position: toast.position,
             constraint: toast.constraint,
             offset: toast.offset,
@@ -424,7 +439,7 @@ where
     }
 
     pub fn current_message(&self) -> Option<&str> {
-        self.queue.front().map(|toast| toast.message.as_str())
+        self.queue.front().map(|toast| toast.copy_text.as_str())
     }
 
     pub fn is_keep_on(&self) -> bool {
@@ -497,6 +512,7 @@ where
         let mut stacked: Vec<Rect> = occupied.to_vec();
         for toast in self.queue.iter_mut() {
             let desired_area = calculate_toast_area_with_layout(
+                toast.title.as_deref(),
                 &toast.message,
                 toast.position,
                 &toast.constraint,
@@ -588,6 +604,7 @@ impl ToastBuilder {
     /// Create a new instance of a `ToastBuilder`
     pub fn new(message: Cow<'static, str>) -> Self {
         Self {
+            title: None,
             message,
             toast_type: ToastType::Info,
             toast_bg: DEFAULT_BG,
@@ -600,6 +617,12 @@ impl ToastBuilder {
             show_progress_bar: None,
             progress_bar_style: None,
         }
+    }
+
+    pub fn title(mut self, title: impl Into<Cow<'static, str>>) -> Self {
+        let title = title.into();
+        self.title = (!title.trim().is_empty()).then_some(title);
+        self
     }
 
     pub fn toast_type(mut self, toast_type: ToastType) -> Self {
@@ -661,6 +684,7 @@ impl ToastBuilder {
 
 fn calculate_toast_area(
     ToastBuilder {
+        title,
         message,
         position,
         constraint,
@@ -672,6 +696,7 @@ fn calculate_toast_area(
     show_progress_bar: bool,
 ) -> Rect {
     calculate_toast_area_with_layout(
+        title.as_deref(),
         message,
         *position,
         constraint,
@@ -683,6 +708,7 @@ fn calculate_toast_area(
 }
 
 fn calculate_toast_area_with_layout(
+    title: Option<&str>,
     message: &str,
     position: ToastPosition,
     constraint: &ToastConstraint,
@@ -700,8 +726,10 @@ fn calculate_toast_area_with_layout(
 
     let text_width = match constraint {
         Auto => {
-            let line_width = message
-                .lines()
+            let line_width = title
+                .into_iter()
+                .chain(std::iter::once(message))
+                .flat_map(str::lines)
                 .map(|line| line.chars().count() as u16)
                 .max()
                 .unwrap_or(1);
@@ -719,9 +747,12 @@ fn calculate_toast_area_with_layout(
             .max(1),
     };
     let width = text_width + TOAST_HORIZONTAL_CHROME;
+    let wrapped_title = title
+        .map(|title| wrap(title, text_width as usize).len() as u16)
+        .unwrap_or(0);
     let wrapped_text = wrap(message, text_width as usize);
     let height = match constraint {
-        Auto => wrapped_text.len() as u16 + toast_vertical_chrome,
+        Auto => wrapped_title + wrapped_text.len() as u16 + toast_vertical_chrome,
         Uniform(c) => area
             .centered_vertically(*c)
             .height
@@ -999,6 +1030,7 @@ mod tests {
     #[test]
     fn progress_bar_increases_auto_height_for_timed_toasts() {
         let normal = calculate_toast_area_with_layout(
+            None,
             "hello",
             ToastPosition::BottomRight,
             &ToastConstraint::Auto,
@@ -1008,6 +1040,7 @@ mod tests {
             false,
         );
         let with_progress = calculate_toast_area_with_layout(
+            None,
             "hello",
             ToastPosition::BottomRight,
             &ToastConstraint::Auto,
@@ -1023,6 +1056,7 @@ mod tests {
     #[test]
     fn full_border_increases_auto_height() {
         let side_rails = calculate_toast_area_with_layout(
+            None,
             "hello",
             ToastPosition::BottomRight,
             &ToastConstraint::Auto,
@@ -1032,6 +1066,7 @@ mod tests {
             false,
         );
         let full = calculate_toast_area_with_layout(
+            None,
             "hello",
             ToastPosition::BottomRight,
             &ToastConstraint::Auto,
@@ -1054,5 +1089,52 @@ mod tests {
         let toast = engine.queue.front().expect("toast queued");
         assert!(!toast.show_progress_bar);
         assert_eq!(toast.progress_ratio(), None);
+    }
+
+    #[test]
+    fn title_is_included_in_copy_text() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(
+            ToastBuilder::new("target path cannot be empty".into())
+                .title("New Scope:")
+                .keep_on(1),
+        );
+
+        assert_eq!(
+            engine.current_message(),
+            Some("New Scope:\ntarget path cannot be empty")
+        );
+        assert_eq!(
+            engine.handle_shortcut(ToastShortcut::Copy),
+            ToastInteraction::CopyRequested(
+                "New Scope:\ntarget path cannot be empty".to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn title_increases_auto_height() {
+        let without_title = calculate_toast_area_with_layout(
+            None,
+            "details",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::SideRails,
+            false,
+        );
+        let with_title = calculate_toast_area_with_layout(
+            Some("Build Failed"),
+            "details",
+            ToastPosition::BottomRight,
+            &ToastConstraint::Auto,
+            (0, 0),
+            Rect::new(0, 0, 80, 25),
+            ToastBorderMode::SideRails,
+            false,
+        );
+
+        assert_eq!(with_title.height, without_title.height + 1);
     }
 }
