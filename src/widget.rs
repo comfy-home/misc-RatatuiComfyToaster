@@ -106,53 +106,69 @@ fn fill_row(buf: &mut Buffer, area: Rect, style: Style) {
     }
 }
 
-fn title_highlight_range(title_len: usize, align: ToastTitleAlign, width: u16) -> (u16, u16) {
-    let title_len = title_len as u16;
+fn title_text_x_in_row(title_len: usize, align: ToastTitleAlign, row_width: u16) -> u16 {
     match align {
-        ToastTitleAlign::Start => (0, (title_len + 1).min(width)),
-        ToastTitleAlign::Center => {
-            let band = (title_len + 4).min(width);
-            let start = width.saturating_sub(band) / 2;
-            (start, band)
-        }
+        ToastTitleAlign::Start => 0,
+        ToastTitleAlign::Center => row_width.saturating_sub(title_len as u16) / 2,
     }
 }
 
-fn title_text_x(title_len: usize, align: ToastTitleAlign, width: u16) -> u16 {
-    match align {
-        ToastTitleAlign::Start => 0,
-        ToastTitleAlign::Center => width.saturating_sub(title_len as u16) / 2,
+fn title_row_layout(
+    _outer: Rect,
+    content_row: Rect,
+    title: &ToastTitle,
+    border_mode: ToastBorderMode,
+) -> (Rect, u16) {
+    let text_x = content_row.x + title_text_x_in_row(title.text.chars().count(), title.align, content_row.width);
+
+    if title.style == ToastTitleStyle::Highlight && title.align == ToastTitleAlign::Start {
+        let extend_left = match border_mode {
+            ToastBorderMode::SideRails => 1,
+            ToastBorderMode::Full => 1,
+        };
+        let paint_area = Rect {
+            x: content_row.x.saturating_sub(extend_left),
+            y: content_row.y,
+            width: content_row.width.saturating_add(extend_left),
+            height: 1,
+        };
+        return (paint_area, text_x);
     }
+
+    (content_row, text_x)
 }
 
 fn render_title_row(
     buf: &mut Buffer,
-    area: Rect,
+    paint_area: Rect,
+    text_x: u16,
     title: &ToastTitle,
     type_color: Color,
     toast_bg: Color,
 ) {
-    if area.width == 0 {
+    if paint_area.width == 0 {
         return;
     }
 
     let base_style = Style::default().bg(toast_bg);
-    fill_row(buf, area, base_style);
+    fill_row(buf, paint_area, base_style);
 
-    let title_len = title.text.chars().count();
-    let text_x = area.x + title_text_x(title_len, title.align, area.width);
+    let title_len = title.text.chars().count() as u16;
 
     if title.style == ToastTitleStyle::Highlight {
-        let (start, len) = title_highlight_range(title_len, title.align, area.width);
         let highlight_style = Style::default()
             .fg(contrasting_fg(type_color))
             .bg(type_color);
-        for offset in 0..len {
-            let x = area.x + start + offset;
-            if x >= area.x + area.width {
-                break;
+        let (highlight_start, highlight_end) = match title.align {
+            ToastTitleAlign::Start => (paint_area.x, (text_x + title_len + 1).min(paint_area.x + paint_area.width)),
+            ToastTitleAlign::Center => {
+                let band = (title_len + 4).min(paint_area.width);
+                let start = paint_area.x + paint_area.width.saturating_sub(band) / 2;
+                (start, (start + band).min(paint_area.x + paint_area.width))
             }
-            buf[(x, area.y)].set_symbol(" ").set_style(highlight_style);
+        };
+        for x in highlight_start..highlight_end {
+            buf[(x, paint_area.y)].set_symbol(" ").set_style(highlight_style);
         }
     }
 
@@ -169,12 +185,12 @@ fn render_title_row(
 
     for (offset, ch) in title.text.chars().enumerate() {
         let x = text_x + offset as u16;
-        if x >= area.x + area.width {
+        if x >= paint_area.x + paint_area.width {
             break;
         }
         let mut encoded = [0u8; 4];
         let symbol = ch.encode_utf8(&mut encoded);
-        buf[(x, area.y)].set_symbol(symbol).set_style(text_style);
+        buf[(x, paint_area.y)].set_symbol(symbol).set_style(text_style);
     }
 }
 
@@ -232,7 +248,7 @@ fn row_rect(area: Rect, row: u16) -> Rect {
     }
 }
 
-fn render_toast_body(buf: &mut Buffer, area: Rect, toast: &Toast) {
+fn render_toast_body(buf: &mut Buffer, outer: Rect, area: Rect, toast: &Toast) {
     if area.width == 0 || area.height == 0 {
         return;
     }
@@ -261,7 +277,10 @@ fn render_toast_body(buf: &mut Buffer, area: Rect, toast: &Toast) {
 
     if let (Some(title), Some(row)) = (toast.title.as_ref(), title_row) {
         if row < rows {
-            render_title_row(buf, row_rect(area, row as u16), title, type_color, toast.bg);
+            let content_row = row_rect(area, row as u16);
+            let (paint_area, text_x) =
+                title_row_layout(outer, content_row, title, toast.border_mode);
+            render_title_row(buf, paint_area, text_x, title, type_color, toast.bg);
         }
     }
 
@@ -322,7 +341,7 @@ impl WidgetRef for Toast {
         };
 
         if message_area.width > 0 && message_area.height > 0 {
-            render_toast_body(buf, message_area, self);
+            render_toast_body(buf, area, message_area, self);
         }
 
         if let (Some(progress_ratio), Some(progress_area)) = (self.progress_ratio, progress_area) {
@@ -471,7 +490,7 @@ mod tests {
     }
 
     #[test]
-    fn highlight_start_extends_from_content_edge_without_left_gap() {
+    fn highlight_start_extends_through_left_border_without_gap() {
         let area = Rect::new(0, 0, 20, 5);
         let mut buf = Buffer::empty(area);
         let mut title = ToastTitle::compact("Err");
@@ -486,6 +505,7 @@ mod tests {
         .with_title(Some(title))
         .render_ref(area, &mut buf);
 
+        assert_eq!(buf[(0, 0)].bg, Color::Red);
         assert_eq!(buf[(1, 0)].bg, Color::Red);
     }
 
