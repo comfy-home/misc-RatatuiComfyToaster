@@ -4,13 +4,17 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ## Origin & Attribution
 
-**ratatui-comfy-toaster** is an enhanced fork of [ratatui-toaster](https://crates.io/crates/ratatui-toaster) by JayanAXHF. While the original provided a solid foundation for toast notifications in terminal UIs, this fork adds significant functionality for production-grade applications requiring interactive and persistent notifications.
+**ratatui-comfy-toaster** is an enhanced fork of [ratatui-toaster](https://crates.io/crates/ratatui-toaster). While the original provided a solid foundation for toast notifications in terminal UIs, this fork adds significant functionality for production-grade applications requiring interactive and persistent notifications.
 
-> **Attribution**: Originally based on `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>.
+><sup> **Attribution**: Originally based on `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>.</sup>
 
 ---
 
 <details><summary>👀 What's new in v0.4.0 ...</summary>
+
+<br><sup>💬 Intro:</sup>  
+<sup>_This release brings **Title** configuration with **Presets**..._</sup>  
+<sup>_It was a bit more work than expected, but here we go:_</sup>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
@@ -26,8 +30,28 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <sub>...  🎉 Enjoy!</sub>
 
-<br><br>
+<br>
 
+<details><summary>See the previous versions...</summary>
+<br>
+<details><summary>👀 What was new in v0.3.2 ...</summary>
+
+#### **1. &nbsp;&nbsp;&nbsp;Expiration Progress Bar**
+- Now your timed toasts can display an optional expiry bar
+- Available are 3 styles:
+    - FullBlock: ████
+    - HalfBlock: ▄▄▄▄ 
+    - Minimal: ____
+- See documentation for more info...
+
+#### **2. &nbsp;&nbsp;&nbsp;Toasts now support two border modes:**
+- `ToastBorderMode::SideRails` keeps the original left/right look
+- `ToastBorderMode::Full` renders a full box border for stronger separation
+    - It's useful mainly with `Center` positioned toasts
+
+</details>    
+</details>
+<br>
 
 ---
 <sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/releases/tag/v0.4.0)</sup>
