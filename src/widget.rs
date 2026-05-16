@@ -4,14 +4,14 @@ use ratatui::{
     style::Color,
     style::{Modifier, Style},
     symbols::{self},
-    widgets::{Block, Borders, Padding, Widget, WidgetRef},
+    widgets::{Block, Borders, Widget, WidgetRef},
 };
 use textwrap::wrap;
 
 use crate::engine::{ToastBorderMode, ToastProgressBarStyle, ToastType};
 use crate::title::{
-    contrasting_fg, dot_separator, line_separator, toast_content_rows, ToastTitle,
-    ToastTitleAlign, ToastTitleLayout, ToastTitleSeparator, ToastTitleStyle,
+    contrasting_fg, dot_separator, line_separator, toast_content_padding, toast_content_rows,
+    ToastTitle, ToastTitleAlign, ToastTitleLayout, ToastTitleSeparator, ToastTitleStyle,
 };
 
 /// A simple widget that represents a toast message. It displays a message with a border colored according to the toast type.
@@ -182,9 +182,10 @@ fn render_separator_row(
     buf: &mut Buffer,
     area: Rect,
     separator: ToastTitleSeparator,
+    type_color: Color,
     toast_bg: Color,
 ) {
-    let style = Style::default().fg(Color::DarkGray).bg(toast_bg);
+    let style = Style::default().fg(type_color).bg(toast_bg);
     fill_row(buf, area, Style::default().bg(toast_bg));
 
     let Some(text) = (match separator {
@@ -266,7 +267,13 @@ fn render_toast_body(buf: &mut Buffer, area: Rect, toast: &Toast) {
 
     if let (Some(title), Some(row)) = (toast.title.as_ref(), separator_row) {
         if row < rows {
-            render_separator_row(buf, row_rect(area, row as u16), title.separator, toast.bg);
+            render_separator_row(
+                buf,
+                row_rect(area, row as u16),
+                title.separator,
+                type_color,
+                toast.bg,
+            );
         }
     }
 
@@ -281,15 +288,15 @@ fn render_toast_body(buf: &mut Buffer, area: Rect, toast: &Toast) {
 
 impl WidgetRef for Toast {
     fn render_ref(&self, area: ratatui::layout::Rect, buf: &mut ratatui::buffer::Buffer) {
-        const PADDING: u16 = 1;
         let borders = match self.border_mode {
             ToastBorderMode::SideRails => Borders::LEFT | Borders::RIGHT,
             ToastBorderMode::Full => Borders::ALL,
         };
+        let content_padding = toast_content_padding(self.title.as_ref());
         let block = Block::default()
             .borders(borders)
             .border_set(symbols::border::QUADRANT_OUTSIDE)
-            .padding(Padding::uniform(PADDING))
+            .padding(content_padding)
             .style(Style::default().bg(self.bg))
             .border_style(Style::default().fg(self.type_.into()).bg(self.bg));
         let inner = block.inner(area);
@@ -401,10 +408,46 @@ mod tests {
         .with_title(Some(ToastTitle::compact("Build Failed")))
         .render_ref(area, &mut buf);
 
-        assert_eq!(buf[(2, 1)].symbol(), "B");
-        assert_eq!(buf[(2, 1)].fg, Color::Red);
-        assert_eq!(buf[(2, 2)].symbol(), "d");
-        assert_eq!(buf[(2, 2)].fg, Color::White);
+        assert_eq!(buf[(2, 0)].symbol(), "B");
+        assert_eq!(buf[(2, 0)].fg, Color::Red);
+        assert_eq!(buf[(2, 0)].bg, Color::DarkGray);
+        assert_eq!(buf[(2, 1)].symbol(), "d");
+        assert_eq!(buf[(2, 1)].fg, Color::White);
+    }
+
+    #[test]
+    fn titled_toast_has_no_empty_row_above_title() {
+        let area = Rect::new(0, 0, 20, 5);
+        let mut buf = Buffer::empty(area);
+        Toast::new(
+            "details",
+            ToastType::Error,
+            Color::DarkGray,
+            ToastBorderMode::SideRails,
+            ToastProgressBarStyle::FullBlock,
+        )
+        .with_title(Some(ToastTitle::compact("Title")))
+        .render_ref(area, &mut buf);
+
+        assert_eq!(buf[(2, 0)].symbol(), "T");
+    }
+
+    #[test]
+    fn untitled_toast_keeps_top_padding_row_above_message() {
+        let area = Rect::new(0, 0, 20, 4);
+        let mut buf = Buffer::empty(area);
+        Toast::new(
+            "details",
+            ToastType::Error,
+            Color::DarkGray,
+            ToastBorderMode::SideRails,
+            ToastProgressBarStyle::FullBlock,
+        )
+        .render_ref(area, &mut buf);
+
+        assert_eq!(buf[(2, 0)].symbol(), " ");
+        assert_eq!(buf[(2, 0)].bg, Color::DarkGray);
+        assert_eq!(buf[(2, 1)].symbol(), "d");
     }
 
     #[test]
@@ -423,8 +466,27 @@ mod tests {
         .with_title(Some(title))
         .render_ref(area, &mut buf);
 
-        assert_eq!(buf[(2, 1)].fg, Color::White);
-        assert_eq!(buf[(2, 1)].bg, Color::Red);
+        assert_eq!(buf[(1, 0)].fg, Color::White);
+        assert_eq!(buf[(1, 0)].bg, Color::Red);
+    }
+
+    #[test]
+    fn highlight_start_extends_from_content_edge_without_left_gap() {
+        let area = Rect::new(0, 0, 20, 5);
+        let mut buf = Buffer::empty(area);
+        let mut title = ToastTitle::compact("Err");
+        title.style = ToastTitleStyle::Highlight;
+        Toast::new(
+            "details",
+            ToastType::Error,
+            Color::DarkGray,
+            ToastBorderMode::SideRails,
+            ToastProgressBarStyle::FullBlock,
+        )
+        .with_title(Some(title))
+        .render_ref(area, &mut buf);
+
+        assert_eq!(buf[(1, 0)].bg, Color::Red);
     }
 
     #[test]
@@ -441,9 +503,10 @@ mod tests {
         .with_title(Some(ToastTitle::gapped("Scope")))
         .render_ref(area, &mut buf);
 
-        assert_eq!(buf[(2, 1)].symbol(), "S");
-        assert_eq!(buf[(2, 2)].symbol(), "·");
-        assert_eq!(buf[(2, 3)].symbol(), "d");
+        assert_eq!(buf[(2, 0)].symbol(), "S");
+        assert_eq!(buf[(2, 1)].symbol(), "·");
+        assert_eq!(buf[(2, 1)].fg, Color::Blue);
+        assert_eq!(buf[(2, 2)].symbol(), "d");
     }
 
     #[test]
@@ -462,6 +525,6 @@ mod tests {
         .with_title(Some(title))
         .render_ref(area, &mut buf);
 
-        assert_eq!(buf[(9, 1)].symbol(), "G");
+        assert_eq!(buf[(9, 0)].symbol(), "G");
     }
 }
