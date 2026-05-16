@@ -10,22 +10,18 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ---
 
-<details><summary>👀 What's new in v0.3.2 ...</summary>
+<details><summary>👀 What's new in v0.4.0 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
-#### **1. &nbsp;&nbsp;&nbsp;Expiration Progress Bar**
-- Now your timed toasts can display an optional expiry bar
-- Available are 3 styles:
-    - FullBlock: ████
-    - HalfBlock: ▄▄▄▄ 
-    - Minimal: ____
-- See documentation for more info...
+#### **1. &nbsp;&nbsp;&nbsp;Add a TITLE to your toasts!**
+- Learn more about this feature [HERE](#%EF%B8%8F-optional-title-line)
+- You can set them up with your own config, or use...
 
-#### **2. &nbsp;&nbsp;&nbsp;Toasts now support two border modes:**
-- `ToastBorderMode::SideRails` keeps the original left/right look
-- `ToastBorderMode::Full` renders a full box border for stronger separation
-    - It's useful mainly with `Center` positioned toasts
+#### **2. &nbsp;&nbsp;&nbsp;Toast title PRESETS!**
+- See details in documentation sections:
+    - [Configuration options](#%EF%B8%8F-toast-title-presets)
+    - [Examples](#toast-titile-preset-examples)
 
 
 <sub>...  🎉 Enjoy!</sub>
@@ -34,11 +30,12 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/releases/tag/v0.3.2)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/releases/tag/v0.4.0)</sup>
 
 ---
 
 </details>
+
 
 <sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup>
 
