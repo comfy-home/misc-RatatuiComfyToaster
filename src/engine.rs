@@ -34,6 +34,7 @@ use ratatui::{
 };
 use textwrap::wrap;
 
+use crate::presets::ToastPreset;
 use crate::title::{
     toast_content_rows, toast_copy_text, toast_vertical_padding_rows, ToastTitle,
     ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle,
@@ -651,6 +652,17 @@ impl ToastBuilder {
         if let Some(title) = &mut self.title {
             title.style = ToastTitleStyle::Highlight;
         }
+        self
+    }
+
+    /// Apply a named title layout preset (see [`ToastPreset`]).
+    pub fn preset(mut self, preset: ToastPreset, title: impl Into<Cow<'static, str>>) -> Self {
+        self.title = if preset.uses_title() {
+            let title = preset.title(title);
+            (!title.is_empty()).then_some(title)
+        } else {
+            None
+        };
         self
     }
 
