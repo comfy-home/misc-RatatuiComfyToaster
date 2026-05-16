@@ -40,9 +40,11 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 </details>
 
-Enjoying the project? Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) repo would absolutely make our day...
+<sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup>
 
-Any issues, or suggestions? Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
+**Enjoying the Toaster project?** Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) repo would absolutely make our day...
+
+**Any issues, or suggestions?** Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
 
 ---
 
