@@ -40,7 +40,9 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 </details>
 
+Enjoying the project? Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) repo would absolutely make our day...
 
+Any issues, or suggestions? Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
 
 ---
 
@@ -84,6 +86,76 @@ ToastBuilder::new("Deployment queued".into())
 ```
 
 Or use the default dark gray (`DEFAULT_BG`) for consistent styling.
+
+### 🏷️ Optional Title Line
+
+Toasts support optional titles with compact or gapped layout, alignment, and highlight styling.
+
+**Compact title** (default) uses the first content row for the title and following rows for the message, without stacking the title as extra wrapped lines. A one-line message with a compact title uses two content rows (title, message).
+
+```rust
+use ratatui_comfy_toaster::{ToastBuilder, ToastType};
+
+ToastBuilder::new("Target path cannot be empty".into())
+    .title("New Scope:")
+    .toast_type(ToastType::Error)
+    .keep_on(1);
+```
+
+**Gapped title** inserts a separator row between title and message (dot fill by default, same middle-dot glyph as ComfyGit tiles):
+
+```rust
+use ratatui_comfy_toaster::{
+    ToastBuilder, ToastTitleSeparator, ToastTitleAlign, ToastType,
+};
+
+ToastBuilder::new("Details".into())
+    .title_gapped("Build Failed")
+    .title_separator(ToastTitleSeparator::Line)
+    .title_align(ToastTitleAlign::Center)
+    .title_highlight()
+    .toast_type(ToastType::Error);
+```
+
+| Option | Values | Default |
+|--------|--------|---------|
+| Layout | `.title()` compact, `.title_gapped()` | compact |
+| Separator | `Dot`, `Line`, `Empty` | `Dot` (gapped only) |
+| Align | `Start`, `Center` | `Start` |
+| Style | plain, `.title_highlight()` | plain |
+
+With `title_highlight()`, the title background uses the toast type color and the text uses a contrasting foreground (white on red/yellow/green/blue). For start alignment, the highlight extends through the left border column (no gray gap before the title band) and one column past the title text; centered highlights add two columns on each side of the title.
+
+Gapped separator rows use the toast type color for dot/line glyphs. Toasts without a title keep top padding (an empty row above the message); titled toasts start the title on the first inner row.
+
+Copy actions return `title + "\n" + message` (separator rows are not copied).
+
+### 🎛️ Title presets
+
+Named layout presets live in `presets.rs` and apply title layout, separator, alignment, and highlight in one call:
+
+```rust
+use ratatui_comfy_toaster::{ToastBuilder, ToastPreset, ToastType};
+
+ToastBuilder::new("Target path cannot be empty".into())
+    .preset(ToastPreset::GappedDotHighlightCenter, "New Scope:")
+    .toast_type(ToastType::Error)
+    .keep_on(1);
+```
+
+| `ToastPreset` | Layout | Separator | Align | Highlight |
+|---------------|--------|-----------|-------|-------------|
+| `MessageOnly` | — | — | — | — |
+| `CompactPlainStart` | compact | — | start | no |
+| `CompactHighlightStart` | compact | — | start | yes |
+| `CompactPlainCenter` | compact | — | center | no |
+| `CompactHighlightCenter` | compact | — | center | yes |
+| `GappedDotStart` | gapped | dot | start | no |
+| `GappedLineStart` | gapped | line | start | no |
+| `GappedEmptyStart` | gapped | empty | start | no |
+| `GappedDotHighlightCenter` | gapped | dot | center | yes |
+
+`CompactHighlightStart` extends the highlight band through the left border column so it meets the side rail with no gray gap.
 
 ### 🧱 Toast Borders
 
@@ -208,7 +280,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = "0.3.0"
+ratatui-comfy-toaster = "0.3.3"
 ```
 
 ### Features
@@ -216,7 +288,7 @@ ratatui-comfy-toaster = "0.3.0"
 - **`tokio`** — Enable async timer support for automatic toast dismissal
 
 ```toml
-ratatui-comfy-toaster = { version = "0.3.0", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.3.3", features = ["tokio"] }
 ```
 
 ---
@@ -253,7 +325,8 @@ use ratatui_comfy_toaster::ToastType;
 
 // Show sticky error that user must dismiss
 engine.show_toast(
-    ToastBuilder::new("Build failed: target key missing".into())
+    ToastBuilder::new("Target key missing in Cargo.toml".into())
+        .title("Build Failed")
         .toast_type(ToastType::Error)
         .keep_on(1),  // Sticky!
 );
@@ -312,6 +385,7 @@ match engine.handle_shortcut(ToastShortcut::Copy) {
 | Method | Description |
 |--------|-------------|
 | `new(message)` | Create builder with message |
+| `title(text)` | Add an optional title line above the message |
 | `toast_type(type)` | Set toast type |
 | `toast_bg(color)` | Override background color |
 | `position(pos)` | Set position |
@@ -374,7 +448,8 @@ engine.show_toast(ToastBuilder::new("Project saved".into()));
 ```rust
 // Errors that must be acknowledged
 engine.show_toast(
-    ToastBuilder::new("Version write failed".into())
+    ToastBuilder::new("Version write failed in Cargo.toml".into())
+        .title("Release Failed")
         .toast_type(ToastType::Error)
         .keep_on(1),
 );
@@ -418,7 +493,7 @@ Enable the `tokio` feature for automatic toast dismissal via async timers:
 
 ```toml
 [dependencies]
-ratatui-comfy-toaster = { version = "0.3.0", features = ["tokio"] }
+ratatui-comfy-toaster = { version = "0.3.3", features = ["tokio"] }
 tokio = { version = "1", features = ["rt-multi-thread", "sync", "time"] }
 ```
 
