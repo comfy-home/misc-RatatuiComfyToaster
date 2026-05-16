@@ -34,6 +34,10 @@ use ratatui::{
 };
 use textwrap::wrap;
 
+use crate::title::{
+    toast_content_rows, toast_copy_text, ToastTitle, ToastTitleAlign, ToastTitleSeparator,
+    ToastTitleStyle,
+};
 use crate::widget::Toast;
 
 const DEFAULT_MAX_TOAST_WIDTH: u16 = 50;
@@ -237,7 +241,7 @@ pub enum ToastMessage {
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
 #[derive(Debug, Default)]
 pub struct ToastBuilder {
-    title: Option<Cow<'static, str>>,
+    title: Option<ToastTitle>,
     message: Cow<'static, str>,
     toast_type: ToastType,
     toast_bg: Color,
@@ -254,7 +258,7 @@ pub struct ToastBuilder {
 #[derive(Debug, Clone)]
 struct ActiveToast {
     toast: Toast,
-    title: Option<String>,
+    title: Option<ToastTitle>,
     message: String,
     copy_text: String,
     position: ToastPosition,
@@ -354,14 +358,10 @@ where
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
         let title = toast
             .title
-            .as_ref()
-            .map(|title| title.clone().into_owned())
-            .filter(|title| !title.trim().is_empty());
+            .clone()
+            .filter(|title| !title.is_empty());
         let message = toast.message.into_owned();
-        let copy_text = title
-            .as_ref()
-            .map(|title| format!("{title}\n{message}"))
-            .unwrap_or_else(|| message.clone());
+        let copy_text = toast_copy_text(title.as_ref(), &message);
         self.queue.push_back(ActiveToast {
             toast: Toast::new(
                 &message,
@@ -512,7 +512,7 @@ where
         let mut stacked: Vec<Rect> = occupied.to_vec();
         for toast in self.queue.iter_mut() {
             let desired_area = calculate_toast_area_with_layout(
-                toast.title.as_deref(),
+                toast.title.as_ref(),
                 &toast.message,
                 toast.position,
                 &toast.constraint,
@@ -619,9 +619,38 @@ impl ToastBuilder {
         }
     }
 
+    /// Compact title on the first content row (no extra separator row).
     pub fn title(mut self, title: impl Into<Cow<'static, str>>) -> Self {
-        let title = title.into();
-        self.title = (!title.trim().is_empty()).then_some(title);
+        let title = ToastTitle::compact(title);
+        self.title = (!title.is_empty()).then_some(title);
+        self
+    }
+
+    /// Title with a separator row before the message.
+    pub fn title_gapped(mut self, title: impl Into<Cow<'static, str>>) -> Self {
+        let title = ToastTitle::gapped(title);
+        self.title = (!title.is_empty()).then_some(title);
+        self
+    }
+
+    pub fn title_separator(mut self, separator: ToastTitleSeparator) -> Self {
+        if let Some(title) = &mut self.title {
+            title.separator = separator;
+        }
+        self
+    }
+
+    pub fn title_align(mut self, align: ToastTitleAlign) -> Self {
+        if let Some(title) = &mut self.title {
+            title.align = align;
+        }
+        self
+    }
+
+    pub fn title_highlight(mut self) -> Self {
+        if let Some(title) = &mut self.title {
+            title.style = ToastTitleStyle::Highlight;
+        }
         self
     }
 
@@ -696,7 +725,7 @@ fn calculate_toast_area(
     show_progress_bar: bool,
 ) -> Rect {
     calculate_toast_area_with_layout(
-        title.as_deref(),
+        title.as_ref(),
         message,
         *position,
         constraint,
@@ -708,7 +737,7 @@ fn calculate_toast_area(
 }
 
 fn calculate_toast_area_with_layout(
-    title: Option<&str>,
+    title: Option<&ToastTitle>,
     message: &str,
     position: ToastPosition,
     constraint: &ToastConstraint,
@@ -727,7 +756,8 @@ fn calculate_toast_area_with_layout(
     let text_width = match constraint {
         Auto => {
             let line_width = title
-                .into_iter()
+                .iter()
+                .map(|title| title.text.as_str())
                 .chain(std::iter::once(message))
                 .flat_map(str::lines)
                 .map(|line| line.chars().count() as u16)
@@ -747,12 +777,10 @@ fn calculate_toast_area_with_layout(
             .max(1),
     };
     let width = text_width + TOAST_HORIZONTAL_CHROME;
-    let wrapped_title = title
-        .map(|title| wrap(title, text_width as usize).len() as u16)
-        .unwrap_or(0);
-    let wrapped_text = wrap(message, text_width as usize);
+    let message_lines = wrap(message, text_width as usize).len().max(1);
+    let content_rows = toast_content_rows(title.filter(|title| !title.is_empty()), message_lines);
     let height = match constraint {
-        Auto => wrapped_title + wrapped_text.len() as u16 + toast_vertical_chrome,
+        Auto => content_rows + toast_vertical_chrome,
         Uniform(c) => area
             .centered_vertically(*c)
             .height
@@ -1125,7 +1153,7 @@ mod tests {
             false,
         );
         let with_title = calculate_toast_area_with_layout(
-            Some("Build Failed"),
+            Some(&ToastTitle::compact("Build Failed")),
             "details",
             ToastPosition::BottomRight,
             &ToastConstraint::Auto,
