@@ -36,8 +36,8 @@ use textwrap::wrap;
 
 use crate::presets::ToastPreset;
 use crate::title::{
-    toast_content_rows, toast_copy_text, toast_vertical_padding_rows, ToastTitle,
-    ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle,
+    ToastTitle, ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle, toast_content_rows,
+    toast_copy_text, toast_vertical_padding_rows,
 };
 use crate::widget::Toast;
 
@@ -357,10 +357,7 @@ where
         }
 
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
-        let title = toast
-            .title
-            .clone()
-            .filter(|title| !title.is_empty());
+        let title = toast.title.clone().filter(|title| !title.is_empty());
         let message = toast.message.into_owned();
         let copy_text = toast_copy_text(title.as_ref(), &message);
         self.queue.push_back(ActiveToast {
@@ -760,8 +757,7 @@ fn calculate_toast_area_with_layout(
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
-    let toast_vertical_chrome =
-        toast_vertical_chrome(title, border_mode, show_progress_bar);
+    let toast_vertical_chrome = toast_vertical_chrome(title, border_mode, show_progress_bar);
     let max_text_width = DEFAULT_MAX_TOAST_WIDTH
         .saturating_sub(TOAST_HORIZONTAL_CHROME)
         .max(1);
@@ -1151,9 +1147,7 @@ mod tests {
         );
         assert_eq!(
             engine.handle_shortcut(ToastShortcut::Copy),
-            ToastInteraction::CopyRequested(
-                "New Scope:\ntarget path cannot be empty".to_string()
-            )
+            ToastInteraction::CopyRequested("New Scope:\ntarget path cannot be empty".to_string())
         );
     }
 
@@ -1182,5 +1176,4 @@ mod tests {
 
         assert_eq!(with_title.height, without_title.height);
     }
-
 }

@@ -1,9 +1,6 @@
 use std::borrow::Cow;
 
-use ratatui::{
-    style::Color,
-    widgets::Padding,
-};
+use ratatui::{style::Color, widgets::Padding};
 
 /// How the title shares vertical space with the message body.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -85,11 +82,7 @@ pub fn toast_has_title(title: Option<&ToastTitle>) -> bool {
 
 /// Vertical padding rows counted in auto height (`top + bottom`).
 pub fn toast_vertical_padding_rows(title: Option<&ToastTitle>) -> u16 {
-    if toast_has_title(title) {
-        1
-    } else {
-        2
-    }
+    if toast_has_title(title) { 1 } else { 2 }
 }
 
 /// Per-side content padding inside the toast border.

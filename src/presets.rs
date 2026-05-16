@@ -1,8 +1,6 @@
 use std::borrow::Cow;
 
-use crate::title::{
-    ToastTitle, ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle,
-};
+use crate::title::{ToastTitle, ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle};
 
 /// Named title-layout presets for quick toast styling.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]

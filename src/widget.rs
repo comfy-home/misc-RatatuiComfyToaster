@@ -10,8 +10,8 @@ use textwrap::wrap;
 
 use crate::engine::{ToastBorderMode, ToastProgressBarStyle, ToastType};
 use crate::title::{
-    contrasting_fg, dot_separator, line_separator, toast_content_padding, toast_content_rows,
     ToastTitle, ToastTitleAlign, ToastTitleLayout, ToastTitleSeparator, ToastTitleStyle,
+    contrasting_fg, dot_separator, line_separator, toast_content_padding, toast_content_rows,
 };
 
 /// A simple widget that represents a toast message. It displays a message with a border colored according to the toast type.
@@ -119,7 +119,8 @@ fn title_row_layout(
     title: &ToastTitle,
     border_mode: ToastBorderMode,
 ) -> (Rect, u16) {
-    let text_x = content_row.x + title_text_x_in_row(title.text.chars().count(), title.align, content_row.width);
+    let text_x = content_row.x
+        + title_text_x_in_row(title.text.chars().count(), title.align, content_row.width);
 
     if title.style == ToastTitleStyle::Highlight && title.align == ToastTitleAlign::Start {
         let extend_left = match border_mode {
@@ -160,7 +161,10 @@ fn render_title_row(
             .fg(contrasting_fg(type_color))
             .bg(type_color);
         let (highlight_start, highlight_end) = match title.align {
-            ToastTitleAlign::Start => (paint_area.x, (text_x + title_len + 1).min(paint_area.x + paint_area.width)),
+            ToastTitleAlign::Start => (
+                paint_area.x,
+                (text_x + title_len + 1).min(paint_area.x + paint_area.width),
+            ),
             ToastTitleAlign::Center => {
                 let band = (title_len + 4).min(paint_area.width);
                 let start = paint_area.x + paint_area.width.saturating_sub(band) / 2;
@@ -168,7 +172,9 @@ fn render_title_row(
             }
         };
         for x in highlight_start..highlight_end {
-            buf[(x, paint_area.y)].set_symbol(" ").set_style(highlight_style);
+            buf[(x, paint_area.y)]
+                .set_symbol(" ")
+                .set_style(highlight_style);
         }
     }
 
@@ -190,7 +196,9 @@ fn render_title_row(
         }
         let mut encoded = [0u8; 4];
         let symbol = ch.encode_utf8(&mut encoded);
-        buf[(x, paint_area.y)].set_symbol(symbol).set_style(text_style);
+        buf[(x, paint_area.y)]
+            .set_symbol(symbol)
+            .set_style(text_style);
     }
 }
 
