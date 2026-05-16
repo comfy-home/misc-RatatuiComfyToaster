@@ -19,13 +19,13 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
 #### **1. &nbsp;&nbsp;&nbsp;Add a TITLE to your toasts!**
-- Learn more about this feature [HERE](#%EF%B8%8F-optional-title-line)
+- Learn more about this feature [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster#%EF%B8%8F-optional-title-line)
 - You can set them up with your own config, or use...
 
 #### **2. &nbsp;&nbsp;&nbsp;Toast title PRESETS!**
 - See details in documentation sections:
-    - [Configuration options](#%EF%B8%8F-toast-title-presets)
-    - [Examples](#toast-titile-preset-examples)
+    - [Configuration options](https://github.com/comfy-home/misc-RatatuiComfyToaster#%EF%B8%8F-toast-title-presets)
+    - [Examples](https://github.com/comfy-home/misc-RatatuiComfyToaster#toast-titile-preset-examples)
 
 
 <sub>...  🎉 Enjoy!</sub>
