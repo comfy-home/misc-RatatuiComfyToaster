@@ -35,8 +35,8 @@ use ratatui::{
 use textwrap::wrap;
 
 use crate::title::{
-    toast_content_rows, toast_copy_text, ToastTitle, ToastTitleAlign, ToastTitleSeparator,
-    ToastTitleStyle,
+    toast_content_rows, toast_copy_text, toast_vertical_padding_rows, ToastTitle,
+    ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle,
 };
 use crate::widget::Toast;
 
@@ -748,7 +748,8 @@ fn calculate_toast_area_with_layout(
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
-    let toast_vertical_chrome = toast_vertical_chrome(border_mode, show_progress_bar);
+    let toast_vertical_chrome =
+        toast_vertical_chrome(title, border_mode, show_progress_bar);
     let max_text_width = DEFAULT_MAX_TOAST_WIDTH
         .saturating_sub(TOAST_HORIZONTAL_CHROME)
         .max(1);
@@ -800,13 +801,17 @@ fn calculate_toast_area_with_layout(
     apply_offset(rect, area, offset)
 }
 
-fn toast_vertical_chrome(border_mode: ToastBorderMode, show_progress_bar: bool) -> u16 {
+fn toast_vertical_chrome(
+    title: Option<&ToastTitle>,
+    border_mode: ToastBorderMode,
+    show_progress_bar: bool,
+) -> u16 {
     let border_rows = match border_mode {
         ToastBorderMode::SideRails => 0,
         ToastBorderMode::Full => 2,
     };
     let progress_rows = u16::from(show_progress_bar);
-    2 + border_rows + progress_rows
+    toast_vertical_padding_rows(title) + border_rows + progress_rows
 }
 
 fn apply_offset(rect: Rect, bounds: Rect, (x_offset, y_offset): (i16, i16)) -> Rect {
@@ -1141,7 +1146,7 @@ mod tests {
     }
 
     #[test]
-    fn title_increases_auto_height() {
+    fn compact_title_replaces_top_padding_for_single_line_message() {
         let without_title = calculate_toast_area_with_layout(
             None,
             "details",
@@ -1163,6 +1168,7 @@ mod tests {
             false,
         );
 
-        assert_eq!(with_title.height, without_title.height + 1);
+        assert_eq!(with_title.height, without_title.height);
     }
+
 }
