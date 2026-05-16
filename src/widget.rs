@@ -2,7 +2,8 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::Color,
-    style::Style,
+    style::{Modifier, Style},
+    text::{Line, Span, Text},
     symbols::{self},
     widgets::{Block, Borders, Padding, Paragraph, Widget, WidgetRef, Wrap},
 };
@@ -12,6 +13,7 @@ use crate::engine::{ToastBorderMode, ToastProgressBarStyle, ToastType};
 /// A simple widget that represents a toast message. It displays a message with a border colored according to the toast type.
 #[derive(Debug, Clone)]
 pub struct Toast {
+    title: Option<String>,
     pub message: String,
     pub type_: ToastType,
     pub bg: Color,
@@ -30,6 +32,7 @@ impl Toast {
         progress_bar_style: ToastProgressBarStyle,
     ) -> Self {
         Self {
+            title: None,
             message: message.to_string(),
             type_,
             bg,
@@ -46,6 +49,11 @@ impl Toast {
 
     pub fn with_progress_bar_style(mut self, progress_bar_style: ToastProgressBarStyle) -> Self {
         self.progress_bar_style = progress_bar_style;
+        self
+    }
+
+    pub fn with_title(mut self, title: Option<String>) -> Self {
+        self.title = title.filter(|title| !title.trim().is_empty());
         self
     }
 }
@@ -124,7 +132,24 @@ impl WidgetRef for Toast {
         };
 
         if message_area.width > 0 && message_area.height > 0 {
-            Paragraph::new(self.message.as_str())
+            let mut lines = Vec::new();
+            if let Some(title) = &self.title {
+                lines.push(Line::from(vec![Span::styled(
+                    title.clone(),
+                    Style::default()
+                        .fg(self.type_.into())
+                        .bg(self.bg)
+                        .add_modifier(Modifier::BOLD),
+                )]));
+            }
+            if !self.message.is_empty() {
+                lines.push(Line::from(vec![Span::styled(
+                    self.message.clone(),
+                    Style::default().fg(Color::White).bg(self.bg),
+                )]));
+            }
+
+            Paragraph::new(Text::from(lines))
                 .style(Style::default().fg(Color::White).bg(self.bg))
                 .wrap(Wrap { trim: false })
                 .render(message_area, buf);
@@ -196,5 +221,25 @@ mod tests {
         .render_ref(area, &mut buf);
 
         assert_eq!(buf[(2, 2)].symbol(), "_");
+    }
+
+    #[test]
+    fn title_renders_above_message_with_type_color() {
+        let area = Rect::new(0, 0, 20, 6);
+        let mut buf = Buffer::empty(area);
+        Toast::new(
+            "details",
+            ToastType::Error,
+            Color::DarkGray,
+            ToastBorderMode::SideRails,
+            ToastProgressBarStyle::FullBlock,
+        )
+        .with_title(Some("Build Failed".to_string()))
+        .render_ref(area, &mut buf);
+
+        assert_eq!(buf[(2, 1)].symbol(), "B");
+        assert_eq!(buf[(2, 1)].fg, Color::Red);
+        assert_eq!(buf[(2, 2)].symbol(), "d");
+        assert_eq!(buf[(2, 2)].fg, Color::White);
     }
 }
