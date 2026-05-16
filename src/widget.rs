@@ -283,25 +283,24 @@ fn render_toast_body(buf: &mut Buffer, outer: Rect, area: Rect, toast: &Toast) {
             Some(_) => (Some(0usize), None, 1usize),
         };
 
-    if let (Some(title), Some(row)) = (toast.title.as_ref(), title_row) {
-        if row < rows {
-            let content_row = row_rect(area, row as u16);
-            let (paint_area, text_x) =
-                title_row_layout(outer, content_row, title, toast.border_mode);
-            render_title_row(buf, paint_area, text_x, title, type_color, toast.bg);
-        }
+    if let (Some(title), Some(row)) = (toast.title.as_ref(), title_row)
+        && row < rows
+    {
+        let content_row = row_rect(area, row as u16);
+        let (paint_area, text_x) = title_row_layout(outer, content_row, title, toast.border_mode);
+        render_title_row(buf, paint_area, text_x, title, type_color, toast.bg);
     }
 
-    if let (Some(title), Some(row)) = (toast.title.as_ref(), separator_row) {
-        if row < rows {
-            render_separator_row(
-                buf,
-                row_rect(area, row as u16),
-                title.separator,
-                type_color,
-                toast.bg,
-            );
-        }
+    if let (Some(title), Some(row)) = (toast.title.as_ref(), separator_row)
+        && row < rows
+    {
+        render_separator_row(
+            buf,
+            row_rect(area, row as u16),
+            title.separator,
+            type_color,
+            toast.bg,
+        );
     }
 
     for (index, line) in message_lines.iter().enumerate() {
