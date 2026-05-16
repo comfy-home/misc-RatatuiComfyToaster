@@ -509,16 +509,16 @@ where
         self.area = area;
         let mut stacked: Vec<Rect> = occupied.to_vec();
         for toast in self.queue.iter_mut() {
-            let desired_area = calculate_toast_area_with_layout(
-                toast.title.as_ref(),
-                &toast.message,
-                toast.position,
-                &toast.constraint,
-                toast.offset,
-                self.area,
-                toast.border_mode,
-                toast.show_progress_bar,
-            );
+            let desired_area = calculate_toast_area_with_layout(ToastLayoutParams {
+                title: toast.title.as_ref(),
+                message: &toast.message,
+                position: toast.position,
+                constraint: &toast.constraint,
+                offset: toast.offset,
+                area: self.area,
+                border_mode: toast.border_mode,
+                show_progress_bar: toast.show_progress_bar,
+            });
             toast.area = avoid_occupied_areas(desired_area, self.area, &stacked, toast.position);
             stacked.push(toast.area);
         }
@@ -733,27 +733,40 @@ fn calculate_toast_area(
     border_mode: ToastBorderMode,
     show_progress_bar: bool,
 ) -> Rect {
-    calculate_toast_area_with_layout(
-        title.as_ref(),
+    calculate_toast_area_with_layout(ToastLayoutParams {
+        title: title.as_ref(),
         message,
-        *position,
+        position: *position,
         constraint,
-        *offset,
+        offset: *offset,
         area,
         border_mode,
         show_progress_bar,
-    )
+    })
 }
 
-fn calculate_toast_area_with_layout(
-    title: Option<&ToastTitle>,
-    message: &str,
+struct ToastLayoutParams<'a> {
+    title: Option<&'a ToastTitle>,
+    message: &'a str,
     position: ToastPosition,
-    constraint: &ToastConstraint,
+    constraint: &'a ToastConstraint,
     offset: (i16, i16),
     area: Rect,
     border_mode: ToastBorderMode,
     show_progress_bar: bool,
+}
+
+fn calculate_toast_area_with_layout(
+    ToastLayoutParams {
+        title,
+        message,
+        position,
+        constraint,
+        offset,
+        area,
+        border_mode,
+        show_progress_bar,
+    }: ToastLayoutParams<'_>,
 ) -> Rect {
     use ToastConstraint::*;
     use ToastPosition::*;
@@ -1070,52 +1083,36 @@ mod tests {
 
     #[test]
     fn progress_bar_increases_auto_height_for_timed_toasts() {
-        let normal = calculate_toast_area_with_layout(
-            None,
-            "hello",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::SideRails,
-            false,
-        );
-        let with_progress = calculate_toast_area_with_layout(
-            None,
-            "hello",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::SideRails,
-            true,
-        );
+        let layout = |show_progress_bar| ToastLayoutParams {
+            title: None,
+            message: "hello",
+            position: ToastPosition::BottomRight,
+            constraint: &ToastConstraint::Auto,
+            offset: (0, 0),
+            area: Rect::new(0, 0, 80, 25),
+            border_mode: ToastBorderMode::SideRails,
+            show_progress_bar,
+        };
+        let normal = calculate_toast_area_with_layout(layout(false));
+        let with_progress = calculate_toast_area_with_layout(layout(true));
 
         assert_eq!(with_progress.height, normal.height + 1);
     }
 
     #[test]
     fn full_border_increases_auto_height() {
-        let side_rails = calculate_toast_area_with_layout(
-            None,
-            "hello",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::SideRails,
-            false,
-        );
-        let full = calculate_toast_area_with_layout(
-            None,
-            "hello",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::Full,
-            false,
-        );
+        let layout = |border_mode| ToastLayoutParams {
+            title: None,
+            message: "hello",
+            position: ToastPosition::BottomRight,
+            constraint: &ToastConstraint::Auto,
+            offset: (0, 0),
+            area: Rect::new(0, 0, 80, 25),
+            border_mode,
+            show_progress_bar: false,
+        };
+        let side_rails = calculate_toast_area_with_layout(layout(ToastBorderMode::SideRails));
+        let full = calculate_toast_area_with_layout(layout(ToastBorderMode::Full));
 
         assert_eq!(full.height, side_rails.height + 2);
     }
@@ -1153,26 +1150,29 @@ mod tests {
 
     #[test]
     fn compact_title_replaces_top_padding_for_single_line_message() {
-        let without_title = calculate_toast_area_with_layout(
-            None,
-            "details",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::SideRails,
-            false,
-        );
-        let with_title = calculate_toast_area_with_layout(
-            Some(&ToastTitle::compact("Build Failed")),
-            "details",
-            ToastPosition::BottomRight,
-            &ToastConstraint::Auto,
-            (0, 0),
-            Rect::new(0, 0, 80, 25),
-            ToastBorderMode::SideRails,
-            false,
-        );
+        let area = Rect::new(0, 0, 80, 25);
+        let constraint = ToastConstraint::Auto;
+        let titled = ToastTitle::compact("Build Failed");
+        let without_title = calculate_toast_area_with_layout(ToastLayoutParams {
+            title: None,
+            message: "details",
+            position: ToastPosition::BottomRight,
+            constraint: &constraint,
+            offset: (0, 0),
+            area,
+            border_mode: ToastBorderMode::SideRails,
+            show_progress_bar: false,
+        });
+        let with_title = calculate_toast_area_with_layout(ToastLayoutParams {
+            title: Some(&titled),
+            message: "details",
+            position: ToastPosition::BottomRight,
+            constraint: &constraint,
+            offset: (0, 0),
+            area,
+            border_mode: ToastBorderMode::SideRails,
+            show_progress_bar: false,
+        });
 
         assert_eq!(with_title.height, without_title.height);
     }
