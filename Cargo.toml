@@ -10,6 +10,7 @@ repository = "https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster"
 readme = "README.md"
 keywords = ["tui", "ratatui", "toast", "notifications", "comfy"]
 categories = ["command-line-utilities", "command-line-interface"]
+exclude = ["assets/*.png"]
 
 [package.metadata]
 alt_repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
