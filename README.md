@@ -1,13 +1,17 @@
+<div align="center">
+
 # ratatui-comfy-toaster
 
-An advanced toast notification engine for [Ratatui](https://ratatui.rs/) terminal UI applications.
+[![crates.io](https://img.shields.io/crates/v/ratatui-comfy-tabs?style=plastic&color=00c8ff&logo=rust&logoColor=white)](https://crates.io/crates/ratatui-comfy-toaster)   
+[![GitLab Repo](https://img.shields.io/badge/Repo-GitLab-FC6D26?style=plastic&logo=gitlab&logoColor=white)](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster)   
+[![GitHub Repo](https://img.shields.io/badge/Repo-GitHub-181717?style=plastic&logo=github&logoColor=white)](https://github.com/comfy-home/misc-RatatuiComfyToaster)
 
-## Origin & Attribution
 
+An advanced toast notification engine for [Ratatui](https://ratatui.rs/) terminal UI applications.  
 **ratatui-comfy-toaster** is an enhanced fork of [ratatui-toaster](https://crates.io/crates/ratatui-toaster). While the original provided a solid foundation for toast notifications in terminal UIs, this fork adds significant functionality for production-grade applications requiring interactive and persistent notifications.
+</div>
 
-><sup> **Attribution**: Originally based on `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>.</sup>
-
+---
 ---
 
 <details><summary>👀 What's new in v0.4.0 ...</summary>
@@ -187,19 +191,19 @@ ToastBuilder::new("Target path cannot be empty".into())
 
 `MessageOnly`
 
-<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/0-MessageOnly.png" width="350" alt="example">
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/raw/main/assets/examples/0-MessageOnly.png" width="350" alt="example">
 
 `GappedLineStart`
 
-<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/1-GappedLineStart.png" width="350" alt="example">
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/raw/main/assets/examples/1-GappedLineStart.png" width="350" alt="example">
 
 `GappedDotHighlightCenter`
 
-<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/2-GappedDotHighlightCenter.png" width="350" alt="example">
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/raw/main/assets/examples/2-GappedDotHighlightCenter.png" width="350" alt="example">
 
 `CompactHighlightStart`
 
-<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/blob/main/assets/examples/3-CompactHighlightStart.png" width="350" alt="example">
+<img src="https://github.com/comfy-home/misc-RatatuiComfyToaster/raw/main/assets/examples/3-CompactHighlightStart.png" width="350" alt="example">
 
 
 ### 🧱 Toast Borders
@@ -610,6 +614,8 @@ See [LICENSE.md](LICENSE.md) for full terms.
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
+
+><sup> **Attribution**: Originally based on `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>.</sup>
 
 <p align="center">
   <sub>Made with ❤️ by <a href="https://comfyhome.io">ComfyHome™</a></sub>
