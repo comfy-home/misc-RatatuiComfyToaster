@@ -5,13 +5,14 @@ version = "0.4.0"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
 license-file = "LICENSE.md"
-homepage = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
-repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
+homepage = "https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster"
+repository = "https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster"
 readme = "README.md"
 keywords = ["tui", "ratatui", "toast", "notifications", "comfy"]
 categories = ["command-line-utilities", "command-line-interface"]
 
 [package.metadata]
+alt_repository = "https://github.com/comfy-home/misc-RatatuiComfyToaster"
 attributions = ["JayanAXHF <sunil.chdry@gmail.com> for the original ratatui-toaster."]
 attrib_timeline = ["ratatui-comfy-toaster v0.1.0 is based on ratatui-toaster v0.1.2"]
 attrib_link = ["https://crates.io/crates/ratatui-toaster"]
