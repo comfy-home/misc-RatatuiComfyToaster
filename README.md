@@ -14,31 +14,38 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 ---
 ---
 
-<details><summary>👀 What's new in v0.4.0 ...</summary>
-
-<br><sup>💬 Intro:</sup>  
-<sup>_This release brings **Title** configuration with **Presets**..._</sup>  
-<sup>_It was a bit more work than expected, but here we go:_</sup>
+<details><summary>👀 What's new in v0.4.1 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
+#### **1. &nbsp;&nbsp;&nbsp;Feel free to **ignore** this v0.4.1 release...**
+- if you previously had v0.4.0 this release does not bring any functional improvements
+- it contains just updated documentation
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br><br>
+
+<details><summary>👀 See previous changes...</summary>
+<br>
+<details><summary>v0-4-0 ...</summary>
+
 #### **1. &nbsp;&nbsp;&nbsp;Add a TITLE to your toasts!**
-- Learn more about this feature [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster#%EF%B8%8F-optional-title-line)
+- Learn more about this feature [HERE](#%EF%B8%8F-optional-title-line)
 - You can set them up with your own config, or use...
 
 #### **2. &nbsp;&nbsp;&nbsp;Toast title PRESETS!**
 - See details in documentation sections:
-    - [Configuration options](https://github.com/comfy-home/misc-RatatuiComfyToaster#%EF%B8%8F-toast-title-presets)
-    - [Examples](https://github.com/comfy-home/misc-RatatuiComfyToaster#toast-titile-preset-examples)
+    - [Configuration options](#%EF%B8%8F-toast-title-presets)
+    - [Examples](#toast-titile-preset-examples)
 
 
 <sub>...  🎉 Enjoy!</sub>
 
 <br>
-
-<details><summary>See the previous versions...</summary>
-<br>
-<details><summary>👀 What was new in v0.3.2 ...</summary>
+</details>
+<details><summary>v0-3-2 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;Expiration Progress Bar**
 - Now your timed toasts can display an optional expiry bar
@@ -53,16 +60,21 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 - `ToastBorderMode::Full` renders a full box border for stronger separation
     - It's useful mainly with `Center` positioned toasts
 
-</details>    
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br>
+</details>
 </details>
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/releases/tag/v0.4.0)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster/-/releases/v0.4.1)</sup>
 
 ---
 
 </details>
+
 
 
 
