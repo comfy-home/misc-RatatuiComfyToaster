@@ -430,10 +430,16 @@ where
 
     /// Dismisses the front (currently displayed) toast and advances the queue.
     pub fn dismiss(&mut self) -> bool {
-        if self.queue.pop_front().is_some() {
-            return true;
+        self.dismiss_at(0)
+    }
+
+    /// Dismisses the toast at `index` in the queue. Returns `false` if the index is out of bounds.
+    pub fn dismiss_at(&mut self, index: usize) -> bool {
+        if index >= self.queue.len() {
+            return false;
         }
-        false
+        self.queue.remove(index);
+        true
     }
 
     pub fn current_message(&self) -> Option<&str> {
@@ -445,12 +451,16 @@ where
     }
 
     pub fn contains(&self, column: u16, row: u16) -> bool {
-        self.queue.front().is_some_and(|toast| {
-            column >= toast.area.x
-                && column < toast.area.x + toast.area.width
-                && row >= toast.area.y
-                && row < toast.area.y + toast.area.height
-        })
+        self.toast_index_at(column, row).is_some()
+    }
+
+    /// Returns the queue index of the topmost toast at the given coordinates.
+    pub fn toast_index_at(&self, column: u16, row: u16) -> Option<usize> {
+        self.queue
+            .iter()
+            .enumerate()
+            .rev()
+            .find_map(|(index, toast)| rect_contains(toast.area, column, row).then_some(index))
     }
 
     pub fn handle_click(
@@ -459,22 +469,21 @@ where
         row: u16,
         button: ToastMouseButton,
     ) -> ToastInteraction {
-        if !self.contains(column, row) {
+        let Some(index) = self.toast_index_at(column, row) else {
             return ToastInteraction::None;
-        }
+        };
 
         match button {
             ToastMouseButton::Left => {
-                if !self.is_keep_on() {
+                if !self.queue[index].keep_on {
                     return ToastInteraction::None;
                 }
-                self.dismiss();
+                self.dismiss_at(index);
                 ToastInteraction::Dismissed
             }
-            ToastMouseButton::Right => self
-                .current_message()
-                .map(|message| ToastInteraction::CopyRequested(message.to_string()))
-                .unwrap_or(ToastInteraction::None),
+            ToastMouseButton::Right => {
+                ToastInteraction::CopyRequested(self.queue[index].copy_text.clone())
+            }
         }
     }
 
@@ -586,6 +595,13 @@ fn avoid_occupied_areas(
     }
 
     area
+}
+
+fn rect_contains(rect: Rect, column: u16, row: u16) -> bool {
+    column >= rect.x
+        && column < rect.x.saturating_add(rect.width)
+        && row >= rect.y
+        && row < rect.y.saturating_add(rect.height)
 }
 
 fn horizontal_overlap(left: Rect, right: Rect) -> bool {
@@ -1146,6 +1162,62 @@ mod tests {
             engine.handle_shortcut(ToastShortcut::Copy),
             ToastInteraction::CopyRequested("New Scope:\ntarget path cannot be empty".to_string())
         );
+    }
+
+    #[test]
+    fn click_dismisses_specific_sticky_toast_not_only_front() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(3)
+            .build();
+        engine.show_toast(
+            ToastBuilder::new("sticky-1".into())
+                .keep_on(1)
+                .position(ToastPosition::BottomRight),
+        );
+        engine.show_toast(
+            ToastBuilder::new("sticky-2".into())
+                .keep_on(1)
+                .position(ToastPosition::BottomRight),
+        );
+        engine.set_area(Rect::new(0, 0, 80, 25));
+
+        let second = engine.queue.get(1).expect("second sticky queued");
+        let click_x = second.area.x + second.area.width / 2;
+        let click_y = second.area.y + second.area.height / 2;
+
+        let interaction = engine.handle_click(click_x, click_y, ToastMouseButton::Left);
+        assert_eq!(interaction, ToastInteraction::Dismissed);
+        assert_eq!(engine.queue_len(), 1);
+        assert_eq!(engine.current_message(), Some("sticky-1"));
+    }
+
+    #[test]
+    fn click_copy_uses_target_toast_message() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .max_queue_depth(3)
+            .build();
+        engine.show_toast(
+            ToastBuilder::new("first".into())
+                .keep_on(1)
+                .position(ToastPosition::BottomRight),
+        );
+        engine.show_toast(
+            ToastBuilder::new("second".into())
+                .keep_on(1)
+                .position(ToastPosition::BottomRight),
+        );
+        engine.set_area(Rect::new(0, 0, 80, 25));
+
+        let second = engine.queue.get(1).expect("second sticky queued");
+        let click_x = second.area.x + second.area.width / 2;
+        let click_y = second.area.y + second.area.height / 2;
+
+        let interaction = engine.handle_click(click_x, click_y, ToastMouseButton::Right);
+        assert_eq!(
+            interaction,
+            ToastInteraction::CopyRequested("second".to_string())
+        );
+        assert_eq!(engine.queue_len(), 2);
     }
 
     #[test]
