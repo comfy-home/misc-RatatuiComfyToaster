@@ -14,13 +14,22 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 ---
 ---
 
-<details><summary>👀 What's new in v0.4.1 ...</summary>
+<details><summary>👀 What's new in v0.4.2 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
-#### **1. &nbsp;&nbsp;&nbsp;Feel free to **ignore** this v0.4.1 release...**
-- if you previously had v0.4.0 this release does not bring any functional improvements
-- it contains just updated documentation
+#### **1. &nbsp;&nbsp;&nbsp;Bugfix: STICKY TOASTS!**
+- This release fixes a bug present when more than one sticky toast was displayed...
+- Previously:
+  - User was unable to dismiss any toast in multi-display scenario
+  - User had to dismiss always the oldest toast
+  - RightClick action to copy worked only with the oldest toast
+- NOW:
+  - User can dismiss sticky toasts in whatever order they want
+  - Copy function works on all displayed sticky toasts
+
+#### **2. &nbsp;&nbsp;&nbsp;Added minimum Rust version to Cargo.toml**
+- test compile passes without issues with Rust 1.88
 
 
 <sub>...  🎉 Enjoy!</sub>
@@ -29,6 +38,17 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <details><summary>👀 See previous changes...</summary>
 <br>
+<details><summary>v0-4-1 ...</summary>
+
+#### **1. &nbsp;&nbsp;&nbsp;Feel free to **ignore** this v0.4.1 release...**
+- if you previously had v0.4.0 this release does not bring any functional improvements
+- it contains just updated documentation
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br>
+</details>
 <details><summary>v0-4-0 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;Add a TITLE to your toasts!**
@@ -69,11 +89,12 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster/-/releases/v0.4.1)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster/-/releases/v0.4.2)</sup>
 
 ---
 
 </details>
+
 
 
 
