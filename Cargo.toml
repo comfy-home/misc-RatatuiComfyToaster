@@ -1,6 +1,6 @@
 [package]
 name = "ratatui-comfy-toaster"
-description = "An advanced toast engine for ratatui"
+description = "An advanced toast engine for ratatui. Timed toast notifications | Sticky toasts with left-click to dismiss & right-click to copy | Presets | and more..."
 version = "0.4.2"
 rust-version = "1.88"
 edition = "2024"
@@ -20,7 +20,7 @@ attrib_timeline = ["ratatui-comfy-toaster v0.1.0 is based on ratatui-toaster v0.
 attrib_link = ["https://crates.io/crates/ratatui-toaster"]
 
 [dependencies]
-ratatui = { version = "0.30.0", default-features = false, features = ["unstable-widget-ref"] }
+ratatui = { version = "0.30", default-features = false, features = ["unstable-widget-ref"] }
 textwrap = "0.16.2"
 tokio = { version = "1.50", features = ["rt-multi-thread"], optional = true }
 
@@ -32,6 +32,6 @@ tokio = ["dep:tokio"]
 [dev-dependencies]
 anyhow = "1.0.102"
 tokio = { version = "1.50", features = ["rt-multi-thread", "sync", "time", "macros"] }
-ratatui = { version = "0.30.0" }
-tachyonfx = { version = "0.25.0", default-features = false, features = ["std", "std-duration"] }
+ratatui = { version = "0.30" }
+tachyonfx = { version = "0.17.0", default-features = false, features = ["std", "std-duration"] }
 tokio-util = "0.7.18"
