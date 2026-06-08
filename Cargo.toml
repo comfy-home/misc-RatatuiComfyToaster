@@ -1,7 +1,7 @@
 [package]
 name = "ratatui-comfy-toaster"
 description = "An advanced toast engine for ratatui"
-version = "0.4.1"
+version = "0.4.2"
 rust-version = "1.88"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
