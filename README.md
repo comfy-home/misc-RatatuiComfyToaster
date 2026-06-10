@@ -3,7 +3,7 @@
 # ratatui-comfy-toaster
 
 [![crates.io](https://img.shields.io/crates/v/ratatui-comfy-toaster?style=plastic&color=00c8ff&logo=rust&logoColor=white)](https://crates.io/crates/ratatui-comfy-toaster)   
-[![GitLab Repo](https://img.shields.io/badge/Repo-GitLab-FC6D26?style=plastic&logo=gitlab&logoColor=white)](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster)   
+[![GitLab Repo](https://img.shields.io/badge/Repo-GitLab-FC6D26?style=plastic&logo=gitlab&logoColor=white)](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster)   
 [![GitHub Repo](https://img.shields.io/badge/Repo-GitHub-181717?style=plastic&logo=github&logoColor=white)](https://github.com/comfy-home/misc-RatatuiComfyToaster)
 
 
@@ -89,7 +89,7 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/dist/crates/ratatui-comfy-toaster/-/releases/v0.4.2)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.4.2)</sup>
 
 ---
 
