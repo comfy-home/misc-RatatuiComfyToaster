@@ -14,6 +14,8 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 ---
 ---
 
+### ✨ Latest changes
+
 <details><summary>👀 What's new in v0.4.2 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
@@ -95,16 +97,15 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 </details>
 
-
-
-
-
-
 <sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup>
+
+<br>
+
+---
 
 **Enjoying the Toaster project?** Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) or [GitLab](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster) repo would absolutely make our day...
 
-**Any issues, or suggestions?** Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
+Any **issues**, or **suggestions**? Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
 
 ---
 
