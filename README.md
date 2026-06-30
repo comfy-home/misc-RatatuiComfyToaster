@@ -102,7 +102,7 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup>
 
-**Enjoying the Toaster project?** Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) repo would absolutely make our day...
+**Enjoying the Toaster project?** Dropping a ⭐ on our [GitHub](https://github.com/comfy-home/misc-RatatuiComfyToaster) or [GitLab](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster) repo would absolutely make our day...
 
 **Any issues, or suggestions?** Click [HERE](https://github.com/comfy-home/misc-RatatuiComfyToaster/issues) and let us know.
 
@@ -635,11 +635,13 @@ if engine.has_toast() {
 
 ---
 
-## License
+## License & Attribution
 
-This project is licensed under the **SA-PS:DA** (Source-Available Public Software with Display Attribution) License.
+This project is licensed under the **SA-PS:DA** (Source-Available Public Software with Distribution Allowed) License.
 
 See [LICENSE.md](LICENSE.md) for full terms.
+
+><sup> **Attribution**: Originally based on 300 lines of code from `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>, therefore, v0.0.1 inherits its license (MIT). Lineage and upstream references are recorded in `Cargo.toml` under `[package.metadata]`.</sup>
 
 ---
 
@@ -648,8 +650,6 @@ See [LICENSE.md](LICENSE.md) for full terms.
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 ---
-
-><sup> **Attribution**: Originally based on `ratatui-toaster v0.1.2` by JayanAXHF <sunil.chdry@gmail.com>.</sup>
 
 <p align="center">
   <sub>Made with ❤️ by <a href="https://comfyhome.io">ComfyHome™</a></sub>
