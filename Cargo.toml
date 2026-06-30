@@ -30,8 +30,8 @@ tokio = ["dep:tokio"]
 [workspace]
 
 [dev-dependencies]
-anyhow = "1.0.102"
+anyhow = "1.0.103"
 tokio = { version = "1.50", features = ["rt-multi-thread", "sync", "time", "macros"] }
-ratatui = { version = "0.30" }
-tachyonfx = { version = "0.17.0", default-features = false, features = ["std", "std-duration"] }
+ratatui = { version = "0.30.2" }
+tachyonfx = { version = "0.25", default-features = false, features = ["std", "std-duration"] }
 tokio-util = "0.7.18"
