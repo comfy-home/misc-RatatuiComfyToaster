@@ -2,6 +2,47 @@
 
 Newest archived changelogs first. When multiple archived files represent the same version, only the newest archive is included here.
 
+## Changelog `v0.4.3` <sup><div align="end">🗓️ 2026-06-30</div></sup>
+
+### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+<sup>💬 Intro:</sup>  
+<sup>_This release does not bring any new features, just dependecy updates._</sup>  
+
+#### **1. &nbsp;&nbsp;&nbsp;Updated:**
+- `ratatui`: 0.30.1 -> 0.30.2
+- `anyhow` (dev-dep): 1.0.102 → 1.0.103
+- `tachyonfx` (dev-dep): 0.17.0 → 0.25
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br>
+
+### 🔧 Maintenance
+
+* CG app version bump to v0.4.3 <sub><sup><sup>_d256070_</sup></sup></sub>
+
+* bump anyhow to 1.0.103, ratatui to 0.30.2, and tachyonfx to 0.25 <sub><sup><sup>_d6fe8f9_</sup></sup></sub>
+
+* reformat ToastMouseButton::Right match arm <sub><sup><sup>_f296d44_</sup></sup></sub>
+
+### ℹ️ Documentation
+
+* README update <sub><sup><sup>_2f6372d_</sup></sup></sub>
+
+### 📝 Other
+
+* Merge pull request #1 (via ComfyGit) <sub><sup><sup>_a0399a8_</sup></sup></sub>
+
+* Merge branch 'main' into 0.4.x <sub><sup><sup>_9690d0c_</sup></sup></sub>
+
+* Merge pull request #2 (via ComfyGit) <sub><sup><sup>_cc0e123_</sup></sup></sub>
+
+* Merge pull request #3 (via ComfyGit) <sub><sup><sup>_92fc2c9_</sup></sup></sub>
+
+---
+
 ## Changelog `v0.4.1` <sup><div align="end">🗓️ 2026-06-02</div></sup>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
