@@ -16,22 +16,17 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ### ✨ Latest changes
 
-<details><summary>👀 What's new in v0.4.2 ...</summary>
+<details><summary>👀 What's new in v0.4.3 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
 
-#### **1. &nbsp;&nbsp;&nbsp;Bugfix: STICKY TOASTS!**
-- This release fixes a bug present when more than one sticky toast was displayed...
-- Previously:
-  - User was unable to dismiss any toast in multi-display scenario
-  - User had to dismiss always the oldest toast
-  - RightClick action to copy worked only with the oldest toast
-- NOW:
-  - User can dismiss sticky toasts in whatever order they want
-  - Copy function works on all displayed sticky toasts
+<sup>💬 Intro:</sup>  
+<sup>_This release does not bring any new features, just dependecy updates._</sup>  
 
-#### **2. &nbsp;&nbsp;&nbsp;Added minimum Rust version to Cargo.toml**
-- test compile passes without issues with Rust 1.88
+#### **1. &nbsp;&nbsp;&nbsp;Updated:**
+- `ratatui`: 0.30.1 -> 0.30.2
+- `anyhow` (dev-dep): 1.0.102 → 1.0.103
+- `tachyonfx` (dev-dep): 0.17.0 → 0.25
 
 
 <sub>...  🎉 Enjoy!</sub>
@@ -91,11 +86,12 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.4.2)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.4.3)</sup>
 
 ---
 
 </details>
+
 
 <sub><sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup></sub>
 
