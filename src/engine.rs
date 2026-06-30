@@ -481,9 +481,9 @@ where
                 self.dismiss_at(index);
                 ToastInteraction::Dismissed
             }
-            ToastMouseButton::Right => ToastInteraction::CopyRequested(
-                self.queue[index].copy_text.clone(),
-            ),
+            ToastMouseButton::Right => {
+                ToastInteraction::CopyRequested(self.queue[index].copy_text.clone())
+            }
         }
     }
 
