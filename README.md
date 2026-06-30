@@ -93,6 +93,7 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 </details>
 
 
+
 <sub><sup>_The_ 👆 _"What's new" section_ ☝️ _is created automatically using our other project - [ComfyGit](https://github.com/comfy-home/ComfyGit). It can do this, and a LOT more..._</sup></sub>
 
 ---
