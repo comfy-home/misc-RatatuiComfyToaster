@@ -248,7 +248,9 @@ pub enum ToastMessage {
         toast_type: ToastType,
         position: ToastPosition,
     },
-    Hide { id: u64 },
+    Hide {
+        id: u64,
+    },
 }
 
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
@@ -363,13 +365,11 @@ where
             .progress_bar_style
             .unwrap_or(self.default_progress_bar_style);
 
-        if self.queue.len() >= self.max_queue_depth {
-            if keep_on {
-                if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
-                    self.queue.remove(pos);
-                } else {
-                    self.queue.remove(0);
-                }
+        if self.queue.len() >= self.max_queue_depth && keep_on {
+            if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
+                self.queue.remove(pos);
+            } else {
+                self.queue.remove(0);
             }
             // Timed toasts are allowed as +1 beyond max_queue_depth; no removal needed.
         }
@@ -822,9 +822,7 @@ fn calculate_toast_area_with_layout(
     use ToastPosition::*;
     let toast_vertical_chrome = toast_vertical_chrome(title, border_mode, show_progress_bar);
     let h_chrome = toast_horizontal_chrome(title);
-    let max_text_width = DEFAULT_MAX_TOAST_WIDTH
-        .saturating_sub(h_chrome)
-        .max(1);
+    let max_text_width = DEFAULT_MAX_TOAST_WIDTH.saturating_sub(h_chrome).max(1);
 
     let text_width = match constraint {
         Auto => {
@@ -1118,8 +1116,14 @@ mod tests {
         assert_eq!(engine.queue_len(), 2);
         assert_eq!(engine.current_message(), Some("sticky-2"));
         let messages: Vec<_> = engine.queue.iter().map(|t| t.message.as_str()).collect();
-        assert!(messages.contains(&"sticky-3"), "new sticky must be in queue");
-        assert!(!messages.contains(&"sticky-1"), "oldest sticky must be displaced");
+        assert!(
+            messages.contains(&"sticky-3"),
+            "new sticky must be in queue"
+        );
+        assert!(
+            !messages.contains(&"sticky-1"),
+            "oldest sticky must be displaced"
+        );
     }
 
     #[test]
