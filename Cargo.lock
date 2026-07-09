@@ -1012,6 +1012,7 @@ dependencies = [
  "textwrap",
  "tokio",
  "tokio-util",
+ "unicode-width",
 ]
 
 [[package]]

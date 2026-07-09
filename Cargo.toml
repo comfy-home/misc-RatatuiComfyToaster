@@ -22,6 +22,7 @@ attrib_link = ["https://crates.io/crates/ratatui-toaster"]
 [dependencies]
 ratatui = { version = "0.30", default-features = false, features = ["unstable-widget-ref"] }
 textwrap = "0.16.2"
+unicode-width = "0.2"
 tokio = { version = "1.50", features = ["rt-multi-thread"], optional = true }
 
 [features]

@@ -831,7 +831,7 @@ fn calculate_toast_area_with_layout(
                 .map(|title| title.text.as_str())
                 .chain(std::iter::once(message))
                 .flat_map(str::lines)
-                .map(|line| line.chars().count() as u16)
+                .map(|line| unicode_width::UnicodeWidthStr::width(line) as u16)
                 .max()
                 .unwrap_or(1);
             std::cmp::min(max_text_width, line_width.max(1))

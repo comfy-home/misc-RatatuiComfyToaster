@@ -7,6 +7,7 @@ use ratatui::{
     widgets::{Block, Borders, Widget, WidgetRef},
 };
 use textwrap::wrap;
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::engine::{ToastBorderMode, ToastProgressBarStyle, ToastType};
 use crate::title::{
@@ -106,10 +107,14 @@ fn fill_row(buf: &mut Buffer, area: Rect, style: Style) {
     }
 }
 
-fn title_text_x_in_row(title_len: usize, align: ToastTitleAlign, row_width: u16) -> u16 {
+fn display_width(s: &str) -> usize {
+    s.width()
+}
+
+fn title_text_x_in_row(title_width: usize, align: ToastTitleAlign, row_width: u16) -> u16 {
     match align {
         ToastTitleAlign::Start => 0,
-        ToastTitleAlign::Center => row_width.saturating_sub(title_len as u16) / 2,
+        ToastTitleAlign::Center => row_width.saturating_sub(title_width as u16) / 2,
     }
 }
 
@@ -120,7 +125,7 @@ fn title_row_layout(
     border_mode: ToastBorderMode,
 ) -> (Rect, u16) {
     let text_x = content_row.x
-        + title_text_x_in_row(title.text.chars().count(), title.align, content_row.width);
+        + title_text_x_in_row(display_width(&title.text), title.align, content_row.width);
 
     if title.style == ToastTitleStyle::Highlight && title.align == ToastTitleAlign::Start {
         let extend_left = match border_mode {
@@ -154,7 +159,7 @@ fn render_title_row(
     let base_style = Style::default().bg(toast_bg);
     fill_row(buf, paint_area, base_style);
 
-    let title_len = title.text.chars().count() as u16;
+    let title_width = display_width(&title.text) as u16;
 
     if title.style == ToastTitleStyle::Highlight {
         let highlight_style = Style::default()
@@ -163,10 +168,10 @@ fn render_title_row(
         let (highlight_start, highlight_end) = match title.align {
             ToastTitleAlign::Start => (
                 paint_area.x,
-                (text_x + title_len + 1).min(paint_area.x + paint_area.width),
+                (text_x + title_width + 1).min(paint_area.x + paint_area.width),
             ),
             ToastTitleAlign::Center => {
-                let band = (title_len + 4).min(paint_area.width);
+                let band = (title_width + 4).min(paint_area.width);
                 let start = paint_area.x + paint_area.width.saturating_sub(band) / 2;
                 (start, (start + band).min(paint_area.x + paint_area.width))
             }
@@ -189,9 +194,14 @@ fn render_title_row(
             .add_modifier(Modifier::BOLD),
     };
 
-    for (offset, ch) in title.text.chars().enumerate() {
-        let x = text_x + offset as u16;
-        if x >= paint_area.x + paint_area.width {
+    let mut col = 0u16;
+    for ch in title.text.chars() {
+        let w = ch.width().unwrap_or(0) as u16;
+        if w == 0 {
+            continue;
+        }
+        let x = text_x + col;
+        if x + w > paint_area.x + paint_area.width {
             break;
         }
         let mut encoded = [0u8; 4];
@@ -199,6 +209,7 @@ fn render_title_row(
         buf[(x, paint_area.y)]
             .set_symbol(symbol)
             .set_style(text_style);
+        col += w;
     }
 }
 
@@ -220,30 +231,42 @@ fn render_separator_row(
         return;
     };
 
-    for (offset, ch) in text.chars().enumerate() {
-        if offset as u16 >= area.width {
+    let mut col = 0u16;
+    for ch in text.chars() {
+        let w = ch.width().unwrap_or(0) as u16;
+        if w == 0 {
+            continue;
+        }
+        if col + w > area.width {
             break;
         }
         let mut encoded = [0u8; 4];
         let symbol = ch.encode_utf8(&mut encoded);
-        buf[(area.x + offset as u16, area.y)]
+        buf[(area.x + col, area.y)]
             .set_symbol(symbol)
             .set_style(style);
+        col += w;
     }
 }
 
 fn render_message_row(buf: &mut Buffer, area: Rect, line: &str, toast_bg: Color) {
     fill_row(buf, area, Style::default().bg(toast_bg));
     let style = Style::default().fg(Color::White).bg(toast_bg);
-    for (offset, ch) in line.chars().enumerate() {
-        if offset as u16 >= area.width {
+    let mut col = 0u16;
+    for ch in line.chars() {
+        let w = ch.width().unwrap_or(0) as u16;
+        if w == 0 {
+            continue;
+        }
+        if col + w > area.width {
             break;
         }
         let mut encoded = [0u8; 4];
         let symbol = ch.encode_utf8(&mut encoded);
-        buf[(area.x + offset as u16, area.y)]
+        buf[(area.x + col, area.y)]
             .set_symbol(symbol)
             .set_style(style);
+        col += w;
     }
 }
 
