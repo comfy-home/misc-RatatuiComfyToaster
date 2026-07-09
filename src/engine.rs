@@ -347,10 +347,12 @@ where
     /// Enqueues a toast. The front of the queue is always the currently displayed toast.
     ///
     /// Queueing rules:
-    /// - If the queue is at `max_queue_depth`, incoming **timed** toasts are silently dropped.
     /// - If the queue is at `max_queue_depth` and the incoming toast is **sticky**, the oldest
-    ///   timed toast is displaced to make room. If no timed toast exists the sticky toast is
-    ///   dropped (all slots already hold sticky messages that require explicit dismissal).
+    ///   timed toast is displaced to make room. If no timed toast exists, the oldest sticky toast
+    ///   is displaced instead.
+    /// - If the queue is at `max_queue_depth` and the incoming toast is **timed**, it is displayed
+    ///   as a temporary +1 beyond `max_queue_depth` and auto-expires normally. Sticky toasts are
+    ///   never displaced by timed toasts.
     pub fn show_toast(&mut self, toast: ToastBuilder) {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
@@ -362,14 +364,14 @@ where
             .unwrap_or(self.default_progress_bar_style);
 
         if self.queue.len() >= self.max_queue_depth {
-            if !keep_on {
-                return;
+            if keep_on {
+                if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
+                    self.queue.remove(pos);
+                } else {
+                    self.queue.remove(0);
+                }
             }
-            if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
-                self.queue.remove(pos);
-            } else {
-                return;
-            }
+            // Timed toasts are allowed as +1 beyond max_queue_depth; no removal needed.
         }
 
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
@@ -1078,7 +1080,7 @@ mod tests {
     }
 
     #[test]
-    fn timed_toast_dropped_when_queue_full() {
+    fn timed_toast_displayed_as_overflow_when_queue_full() {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
             .max_queue_depth(2)
             .build();
@@ -1086,7 +1088,7 @@ mod tests {
         engine.show_toast(ToastBuilder::new("b".into()));
         engine.show_toast(ToastBuilder::new("overflow".into()));
 
-        assert_eq!(engine.queue_len(), 2);
+        assert_eq!(engine.queue_len(), 3);
         assert_eq!(engine.current_message(), Some("a"));
     }
 
@@ -1105,16 +1107,19 @@ mod tests {
     }
 
     #[test]
-    fn sticky_blocked_by_all_sticky_queue() {
+    fn sticky_displaces_oldest_sticky_when_queue_full() {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
             .max_queue_depth(2)
             .build();
         engine.show_toast(ToastBuilder::new("sticky-1".into()).keep_on(1));
         engine.show_toast(ToastBuilder::new("sticky-2".into()).keep_on(1));
-        engine.show_toast(ToastBuilder::new("sticky-3-dropped".into()).keep_on(1));
+        engine.show_toast(ToastBuilder::new("sticky-3".into()).keep_on(1));
 
         assert_eq!(engine.queue_len(), 2);
-        assert_eq!(engine.current_message(), Some("sticky-1"));
+        assert_eq!(engine.current_message(), Some("sticky-2"));
+        let messages: Vec<_> = engine.queue.iter().map(|t| t.message.as_str()).collect();
+        assert!(messages.contains(&"sticky-3"), "new sticky must be in queue");
+        assert!(!messages.contains(&"sticky-1"), "oldest sticky must be displaced");
     }
 
     #[test]
