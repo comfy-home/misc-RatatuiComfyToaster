@@ -92,6 +92,7 @@ where
     default_progress_bar: bool,
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
+    next_id: u64,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
@@ -238,7 +239,7 @@ pub enum ToastInteraction {
     CopyRequested(String),
 }
 
-/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that any currently displayed toast should be hidden.
+/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that a specific toast should be hidden by its unique ID.
 ///
 ///NOTE: You do have to handle the events yourself. Usually, its as simple as matching on the `ToastMessage` in your event loop and calling the appropriate methods on the `ToastEngine` to show or hide toasts based on the received messages.
 #[derive(Debug, Clone)]
@@ -248,7 +249,7 @@ pub enum ToastMessage {
         toast_type: ToastType,
         position: ToastPosition,
     },
-    Hide,
+    Hide { id: u64 },
 }
 
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
@@ -270,6 +271,7 @@ pub struct ToastBuilder {
 
 #[derive(Debug, Clone)]
 struct ActiveToast {
+    id: u64,
     toast: Toast,
     title: Option<ToastTitle>,
     message: String,
@@ -299,6 +301,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id,
             tx,
             ..
         }: Self,
@@ -310,6 +313,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id,
             tx,
             queue: VecDeque::new(),
         }
@@ -335,6 +339,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id: 0,
             tx,
             queue: VecDeque::new(),
         }
@@ -372,7 +377,10 @@ where
         let title = toast.title.clone().filter(|title| !title.is_empty());
         let message = toast.message.into_owned();
         let copy_text = toast_copy_text(title.as_ref(), &message);
+        let id = self.next_id;
+        self.next_id += 1;
         self.queue.push_back(ActiveToast {
+            id,
             toast: Toast::new(
                 &message,
                 toast.toast_type,
@@ -406,7 +414,7 @@ where
                 let tx_clone = tx.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(duration).await;
-                    let _ = tx_clone.send(ToastMessage::Hide.into()).await;
+                    let _ = tx_clone.send(ToastMessage::Hide { id }.into()).await;
                 });
             }
         }
@@ -518,6 +526,19 @@ where
     /// Hides the currently displayed toast, if any. This method sets the current toast to `None`, which will cause it to no longer be rendered on the screen.
     pub fn hide_toast(&mut self) {
         self.dismiss();
+    }
+
+    /// Hides the toast with the given ID, if it is still in the queue. This is used by the tokio
+    /// integration to ensure that a `ToastMessage::Hide` message targets the specific toast that
+    /// timed out, rather than blindly dismissing the front of the queue (which may be a different
+    /// toast by the time the message is processed).
+    pub fn hide_toast_by_id(&mut self, id: u64) -> bool {
+        if let Some(pos) = self.queue.iter().position(|toast| toast.id == id) {
+            self.queue.remove(pos);
+            true
+        } else {
+            false
+        }
     }
 
     /// Sets the area for the toast engine. This method allows you to update the area where toasts will be displayed, which can be useful if the layout of your terminal UI changes and you need to adjust the toast display area accordingly.
