@@ -37,12 +37,11 @@ use textwrap::wrap;
 use crate::presets::ToastPreset;
 use crate::title::{
     ToastTitle, ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle, toast_content_rows,
-    toast_copy_text, toast_vertical_padding_rows,
+    toast_copy_text, toast_horizontal_chrome, toast_vertical_padding_rows,
 };
 use crate::widget::Toast;
 
 const DEFAULT_MAX_TOAST_WIDTH: u16 = 50;
-const TOAST_HORIZONTAL_CHROME: u16 = 4;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum ToastBorderMode {
@@ -77,6 +76,11 @@ pub const DEFAULT_BG: Color = Color::DarkGray;
 /// You can call `show_toast` to display a toast, and `hide_toast` to hide the toast. To animate,
 /// you can get the area of the toast using `toast_area` and implement your animation logic based on that area. #[derive(Debug)]
 /// Caveat: If you're not using the `tokio` feature, create a `ToastEngine<()>`. There is a (hacky) impl to make it work without the `tokio` feature.
+///
+/// # Thread safety
+/// `ToastEngine` is `Send` but **not** `Sync`. The type parameter `A` is bounded by `Send + 'static`,
+/// but the engine itself holds a `VecDeque` that is not synchronized. To share a `ToastEngine` across
+/// threads, wrap it in a `std::sync::Mutex` or `tokio::sync::Mutex`.
 pub struct ToastEngine<A>
 where
     A: From<ToastMessage> + Send + 'static,
@@ -87,6 +91,7 @@ where
     default_progress_bar: bool,
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
+    next_id: u64,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
@@ -219,6 +224,13 @@ pub enum ToastShortcut {
     Dismiss,
 }
 
+/// The result of a user interaction with a toast.
+///
+/// # Security note
+/// The `CopyRequested` variant contains an **untrusted** string derived from user-provided toast
+/// messages. It is not sanitized or escaped. If you pipe this content into a shell, terminal, or
+/// any interpreter, escape sequences embedded in the original message could be executed. Always
+/// treat the payload as untrusted input when forwarding it to external systems.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToastInteraction {
     None,
@@ -226,7 +238,7 @@ pub enum ToastInteraction {
     CopyRequested(String),
 }
 
-/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that any currently displayed toast should be hidden.
+/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that a specific toast should be hidden by its unique ID.
 ///
 ///NOTE: You do have to handle the events yourself. Usually, its as simple as matching on the `ToastMessage` in your event loop and calling the appropriate methods on the `ToastEngine` to show or hide toasts based on the received messages.
 #[derive(Debug, Clone)]
@@ -236,7 +248,7 @@ pub enum ToastMessage {
         toast_type: ToastType,
         position: ToastPosition,
     },
-    Hide,
+    Hide { id: u64 },
 }
 
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
@@ -258,6 +270,7 @@ pub struct ToastBuilder {
 
 #[derive(Debug, Clone)]
 struct ActiveToast {
+    id: u64,
     toast: Toast,
     title: Option<ToastTitle>,
     message: String,
@@ -287,6 +300,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id,
             tx,
             ..
         }: Self,
@@ -298,6 +312,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id,
             tx,
             queue: VecDeque::new(),
         }
@@ -323,6 +338,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            next_id: 0,
             tx,
             queue: VecDeque::new(),
         }
@@ -331,10 +347,12 @@ where
     /// Enqueues a toast. The front of the queue is always the currently displayed toast.
     ///
     /// Queueing rules:
-    /// - If the queue is at `max_queue_depth`, incoming **timed** toasts are silently dropped.
     /// - If the queue is at `max_queue_depth` and the incoming toast is **sticky**, the oldest
-    ///   timed toast is displaced to make room. If no timed toast exists the sticky toast is
-    ///   dropped (all slots already hold sticky messages that require explicit dismissal).
+    ///   timed toast is displaced to make room. If no timed toast exists, the oldest sticky toast
+    ///   is displaced instead.
+    /// - If the queue is at `max_queue_depth` and the incoming toast is **timed**, it is displayed
+    ///   as a temporary +1 beyond `max_queue_depth` and auto-expires normally. Sticky toasts are
+    ///   never displaced by timed toasts.
     pub fn show_toast(&mut self, toast: ToastBuilder) {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
@@ -346,21 +364,24 @@ where
             .unwrap_or(self.default_progress_bar_style);
 
         if self.queue.len() >= self.max_queue_depth {
-            if !keep_on {
-                return;
+            if keep_on {
+                if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
+                    self.queue.remove(pos);
+                } else {
+                    self.queue.remove(0);
+                }
             }
-            if let Some(pos) = self.queue.iter().rposition(|t| !t.keep_on) {
-                self.queue.remove(pos);
-            } else {
-                return;
-            }
+            // Timed toasts are allowed as +1 beyond max_queue_depth; no removal needed.
         }
 
         let area = calculate_toast_area(&toast, self.area, border_mode, show_progress_bar);
         let title = toast.title.clone().filter(|title| !title.is_empty());
         let message = toast.message.into_owned();
         let copy_text = toast_copy_text(title.as_ref(), &message);
+        let id = self.next_id;
+        self.next_id += 1;
         self.queue.push_back(ActiveToast {
+            id,
             toast: Toast::new(
                 &message,
                 toast.toast_type,
@@ -394,7 +415,7 @@ where
                 let tx_clone = tx.clone();
                 tokio::spawn(async move {
                     tokio::time::sleep(duration).await;
-                    let _ = tx_clone.send(ToastMessage::Hide.into()).await;
+                    let _ = tx_clone.send(ToastMessage::Hide { id }.into()).await;
                 });
             }
         }
@@ -506,6 +527,19 @@ where
     /// Hides the currently displayed toast, if any. This method sets the current toast to `None`, which will cause it to no longer be rendered on the screen.
     pub fn hide_toast(&mut self) {
         self.dismiss();
+    }
+
+    /// Hides the toast with the given ID, if it is still in the queue. This is used by the tokio
+    /// integration to ensure that a `ToastMessage::Hide` message targets the specific toast that
+    /// timed out, rather than blindly dismissing the front of the queue (which may be a different
+    /// toast by the time the message is processed).
+    pub fn hide_toast_by_id(&mut self, id: u64) -> bool {
+        if let Some(pos) = self.queue.iter().position(|toast| toast.id == id) {
+            self.queue.remove(pos);
+            true
+        } else {
+            false
+        }
     }
 
     /// Sets the area for the toast engine. This method allows you to update the area where toasts will be displayed, which can be useful if the layout of your terminal UI changes and you need to adjust the toast display area accordingly.
@@ -787,8 +821,9 @@ fn calculate_toast_area_with_layout(
     use ToastConstraint::*;
     use ToastPosition::*;
     let toast_vertical_chrome = toast_vertical_chrome(title, border_mode, show_progress_bar);
+    let h_chrome = toast_horizontal_chrome(title);
     let max_text_width = DEFAULT_MAX_TOAST_WIDTH
-        .saturating_sub(TOAST_HORIZONTAL_CHROME)
+        .saturating_sub(h_chrome)
         .max(1);
 
     let text_width = match constraint {
@@ -798,7 +833,7 @@ fn calculate_toast_area_with_layout(
                 .map(|title| title.text.as_str())
                 .chain(std::iter::once(message))
                 .flat_map(str::lines)
-                .map(|line| line.chars().count() as u16)
+                .map(|line| unicode_width::UnicodeWidthStr::width(line) as u16)
                 .max()
                 .unwrap_or(1);
             std::cmp::min(max_text_width, line_width.max(1))
@@ -806,15 +841,15 @@ fn calculate_toast_area_with_layout(
         Uniform(c) => area
             .centered_horizontally(*c)
             .width
-            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .saturating_sub(h_chrome)
             .max(1),
         Manual { width, .. } => area
             .centered_horizontally(*width)
             .width
-            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .saturating_sub(h_chrome)
             .max(1),
     };
-    let width = text_width + TOAST_HORIZONTAL_CHROME;
+    let width = text_width + h_chrome;
     let message_lines = wrap(message, text_width as usize).len().max(1);
     let content_rows = toast_content_rows(title.filter(|title| !title.is_empty()), message_lines);
     let height = match constraint {
@@ -1045,7 +1080,7 @@ mod tests {
     }
 
     #[test]
-    fn timed_toast_dropped_when_queue_full() {
+    fn timed_toast_displayed_as_overflow_when_queue_full() {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
             .max_queue_depth(2)
             .build();
@@ -1053,7 +1088,7 @@ mod tests {
         engine.show_toast(ToastBuilder::new("b".into()));
         engine.show_toast(ToastBuilder::new("overflow".into()));
 
-        assert_eq!(engine.queue_len(), 2);
+        assert_eq!(engine.queue_len(), 3);
         assert_eq!(engine.current_message(), Some("a"));
     }
 
@@ -1072,16 +1107,19 @@ mod tests {
     }
 
     #[test]
-    fn sticky_blocked_by_all_sticky_queue() {
+    fn sticky_displaces_oldest_sticky_when_queue_full() {
         let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
             .max_queue_depth(2)
             .build();
         engine.show_toast(ToastBuilder::new("sticky-1".into()).keep_on(1));
         engine.show_toast(ToastBuilder::new("sticky-2".into()).keep_on(1));
-        engine.show_toast(ToastBuilder::new("sticky-3-dropped".into()).keep_on(1));
+        engine.show_toast(ToastBuilder::new("sticky-3".into()).keep_on(1));
 
         assert_eq!(engine.queue_len(), 2);
-        assert_eq!(engine.current_message(), Some("sticky-1"));
+        assert_eq!(engine.current_message(), Some("sticky-2"));
+        let messages: Vec<_> = engine.queue.iter().map(|t| t.message.as_str()).collect();
+        assert!(messages.contains(&"sticky-3"), "new sticky must be in queue");
+        assert!(!messages.contains(&"sticky-1"), "oldest sticky must be displaced");
     }
 
     #[test]

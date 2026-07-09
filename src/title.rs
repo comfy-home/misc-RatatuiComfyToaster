@@ -107,6 +107,14 @@ pub fn toast_content_padding(title: Option<&ToastTitle>) -> Padding {
     }
 }
 
+/// Total horizontal chrome (left border + right border + left padding + right padding).
+/// This varies based on title style: `Highlight + Start` toasts use `left: 0` padding,
+/// reducing the chrome by 1 column.
+pub fn toast_horizontal_chrome(title: Option<&ToastTitle>) -> u16 {
+    let padding = toast_content_padding(title);
+    2 + padding.left as u16 + padding.right as u16
+}
+
 pub fn toast_content_rows(title: Option<&ToastTitle>, message_lines: usize) -> u16 {
     let message_lines = message_lines.max(1) as u16;
     match title.filter(|title| !title.is_empty()) {
