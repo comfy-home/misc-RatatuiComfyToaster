@@ -1,7 +1,7 @@
 [package]
 name = "ratatui-comfy-toaster"
 description = "An advanced toast engine for ratatui. Timed toast notifications | Sticky toasts with left-click to dismiss & right-click to copy | Presets | and more..."
-version = "0.5.0"
+version = "0.5.1"
 rust-version = "1.88"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
@@ -22,6 +22,7 @@ attrib_link = ["https://crates.io/crates/ratatui-toaster"]
 [dependencies]
 ratatui = { version = "0.30", default-features = false, features = ["unstable-widget-ref"] }
 textwrap = "0.16.2"
+unicode-width = "0.2"
 tokio = { version = "1.50", features = ["rt-multi-thread"], optional = true }
 
 [features]

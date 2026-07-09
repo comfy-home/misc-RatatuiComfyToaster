@@ -1004,7 +1004,7 @@ dependencies = [
 
 [[package]]
 name = "ratatui-comfy-toaster"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "ratatui",
@@ -1012,6 +1012,7 @@ dependencies = [
  "textwrap",
  "tokio",
  "tokio-util",
+ "unicode-width",
 ]
 
 [[package]]
