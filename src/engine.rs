@@ -77,6 +77,11 @@ pub const DEFAULT_BG: Color = Color::DarkGray;
 /// You can call `show_toast` to display a toast, and `hide_toast` to hide the toast. To animate,
 /// you can get the area of the toast using `toast_area` and implement your animation logic based on that area. #[derive(Debug)]
 /// Caveat: If you're not using the `tokio` feature, create a `ToastEngine<()>`. There is a (hacky) impl to make it work without the `tokio` feature.
+///
+/// # Thread safety
+/// `ToastEngine` is `Send` but **not** `Sync`. The type parameter `A` is bounded by `Send + 'static`,
+/// but the engine itself holds a `VecDeque` that is not synchronized. To share a `ToastEngine` across
+/// threads, wrap it in a `std::sync::Mutex` or `tokio::sync::Mutex`.
 pub struct ToastEngine<A>
 where
     A: From<ToastMessage> + Send + 'static,
@@ -219,6 +224,13 @@ pub enum ToastShortcut {
     Dismiss,
 }
 
+/// The result of a user interaction with a toast.
+///
+/// # Security note
+/// The `CopyRequested` variant contains an **untrusted** string derived from user-provided toast
+/// messages. It is not sanitized or escaped. If you pipe this content into a shell, terminal, or
+/// any interpreter, escape sequences embedded in the original message could be executed. Always
+/// treat the payload as untrusted input when forwarding it to external systems.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ToastInteraction {
     None,
