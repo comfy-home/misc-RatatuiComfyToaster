@@ -14,7 +14,7 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 ---
 ---
 
-### ✨ Latest changes
+### ✨ Release Notes
 
 <details><summary>👀 What's new in v0.4.3 ...</summary>
 
