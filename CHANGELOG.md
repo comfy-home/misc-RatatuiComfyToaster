@@ -2,6 +2,83 @@
 
 Newest archived changelogs first. When multiple archived files represent the same version, only the newest archive is included here.
 
+## Changelog `v0.5.2` <sup><div align="end">🗓️ 2026-07-09</div></sup>
+
+### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+#### **1. &nbsp;&nbsp;&nbsp;(Bugfix) Tokio `Hide` dismisses wrong toast**
+- `ToastMessage::Hide` now carries a toast ID (`Hide { id: u64 }`). Added `hide_toast_by_id(id)` to dismiss a specific toast by identity, preventing stale timeout messages from removing unrelated toasts. `hide_toast()` remains for backward compatibility for non-tokio applications.
+- IMPORTANT:
+  - This technically might for some users introduce a breaking public API change!
+  - Those who pattern-match or construct `Hide` directly will need to switch from calling `hide_toast()` to `hide_toast_by_id(id)`
+  - If you keep using the old call, your app still compiles but dismisses the front of the queue regardless of which toast actually timed out
+
+#### **2. &nbsp;&nbsp;&nbsp;(Bugfix) Correct toast width for highlight+start titles**
+- Horizontal chrome is now computed dynamically from title style instead of a hardcoded constant. `Highlight + Start` toasts (which use zero left padding) are no longer 1 column wider than necessary, eliminating wrap-width mismatches between area calculation and rendering.
+
+#### **3. &nbsp;&nbsp;&nbsp;(Bugfix) Wide characters (CJK, emoji) now render correctly**
+- All text rendering now uses `unicode-width` for display-width calculations instead of `chars().count()`. Full-width characters (CJK ideographs, emoji) are placed at the correct terminal columns, fixing centering, overflow, and truncation issues. Zero-width characters (combining marks, ZWJ) are skipped.
+
+#### **4. &nbsp;&nbsp;&nbsp;(Bugfix) Queue full of sticky toasts blocks all new toasts**
+- Symptom: When `max_queue_depth` is reached and all queued toasts are sticky, new toasts are silently dropped
+- NOW when queue is full (default depth is 4) if:
+  - New toast is a **sticky** toast → dismiss the oldest sticky toast to make room.
+  - New toast is a **timed** toast → display as a temporary +1 beyond `max_queue_depth`; it auto-expires normally.
+    - Sticky toasts are never displaced by timed toasts.
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br>
+
+### 💫 _Changed in:_ **Tokio**
+
+#### 🐛 Fix(es)
+
+* add unique ID tracking for toasts to prevent race conditions in auto-dismiss <sub><sup><sup>_a90fe56_</sup></sup></sub>
+
+---
+
+## 💬 General Improvements & Fixes:
+
+### 🧩 Features
+
+* use unicode-width for proper character width calculation instead of char count <sub><sup><sup>_5232520_</sup></sup></sub>
+
+### 🔧 Maintenance
+
+* CG app version bump to v0.5.0 <sub><sup><sup>_f7b596d_</sup></sup></sub>
+
+* add documentation for thread safety and security considerations <sub><sup><sup>_c5f1f68_</sup></sup></sub>
+
+* CG app version bump to v0.5.1 <sub><sup><sup>_d956548_</sup></sup></sub>
+
+* CG app version bump to v0.5.2 <sub><sup><sup>_87c8058_</sup></sup></sub>
+
+### ℹ️ Documentation
+
+* rename "Latest changes" section to "Release Notes" in README <sub><sup><sup>_71a2a26_</sup></sup></sub>
+
+### ♻️ Refactor
+
+* extract horizontal chrome calculation into dedicated function <sub><sup><sup>_e5c26be_</sup></sup></sub>
+
+* allow timed toasts to overflow queue and sticky toasts to displace oldest sticky <sub><sup><sup>_01d3ed8_</sup></sup></sub>
+
+* simplify queue overflow logic and improve code formatting <sub><sup><sup>_b3c50e3_</sup></sup></sub>
+
+* remove unnecessary u16 casts in toast_horizontal_chrome calculation <sub><sup><sup>_eb4848b_</sup></sup></sub>
+
+### 📝 Other
+
+* Merge pull request #4 (via ComfyGit) <sub><sup><sup>_8391a02_</sup></sup></sub>
+
+* Merge pull request #5 (via ComfyGit) <sub><sup><sup>_5812ae1_</sup></sup></sub>
+
+* Merge pull request #6 (via ComfyGit) <sub><sup><sup>_0672442_</sup></sup></sub>
+
+---
+
 ## Changelog `v0.4.3` <sup><div align="end">🗓️ 2026-06-30</div></sup>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
