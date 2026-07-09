@@ -37,12 +37,11 @@ use textwrap::wrap;
 use crate::presets::ToastPreset;
 use crate::title::{
     ToastTitle, ToastTitleAlign, ToastTitleSeparator, ToastTitleStyle, toast_content_rows,
-    toast_copy_text, toast_vertical_padding_rows,
+    toast_copy_text, toast_horizontal_chrome, toast_vertical_padding_rows,
 };
 use crate::widget::Toast;
 
 const DEFAULT_MAX_TOAST_WIDTH: u16 = 50;
-const TOAST_HORIZONTAL_CHROME: u16 = 4;
 
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum ToastBorderMode {
@@ -820,8 +819,9 @@ fn calculate_toast_area_with_layout(
     use ToastConstraint::*;
     use ToastPosition::*;
     let toast_vertical_chrome = toast_vertical_chrome(title, border_mode, show_progress_bar);
+    let h_chrome = toast_horizontal_chrome(title);
     let max_text_width = DEFAULT_MAX_TOAST_WIDTH
-        .saturating_sub(TOAST_HORIZONTAL_CHROME)
+        .saturating_sub(h_chrome)
         .max(1);
 
     let text_width = match constraint {
@@ -839,15 +839,15 @@ fn calculate_toast_area_with_layout(
         Uniform(c) => area
             .centered_horizontally(*c)
             .width
-            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .saturating_sub(h_chrome)
             .max(1),
         Manual { width, .. } => area
             .centered_horizontally(*width)
             .width
-            .saturating_sub(TOAST_HORIZONTAL_CHROME)
+            .saturating_sub(h_chrome)
             .max(1),
     };
-    let width = text_width + TOAST_HORIZONTAL_CHROME;
+    let width = text_width + h_chrome;
     let message_lines = wrap(message, text_width as usize).len().max(1);
     let content_rows = toast_content_rows(title.filter(|title| !title.is_empty()), message_lines);
     let height = match constraint {
