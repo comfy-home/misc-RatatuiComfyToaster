@@ -238,7 +238,12 @@ pub enum ToastInteraction {
     CopyRequested(String),
 }
 
-/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that a specific toast should be hidden by its unique ID.
+/// The messages that can be sent to the `ToastEngine` to control the display of toasts.
+///
+/// - `Show` carries the basic fields (`message`, `toast_type`, `position`) for backward compatibility.
+/// - `ShowBuilder` carries a fully-configured `ToastBuilder` so that all builder fields (title, duration,
+///   keep_on, progress bar, border mode, etc.) are preserved through the event loop.
+/// - `Hide` indicates that a specific toast should be hidden by its unique ID.
 ///
 ///NOTE: You do have to handle the events yourself. Usually, its as simple as matching on the `ToastMessage` in your event loop and calling the appropriate methods on the `ToastEngine` to show or hide toasts based on the received messages.
 #[derive(Debug, Clone)]
@@ -248,13 +253,14 @@ pub enum ToastMessage {
         toast_type: ToastType,
         position: ToastPosition,
     },
+    ShowBuilder(ToastBuilder),
     Hide {
         id: u64,
     },
 }
 
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ToastBuilder {
     title: Option<ToastTitle>,
     message: Cow<'static, str>,
