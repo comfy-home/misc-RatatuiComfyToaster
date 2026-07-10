@@ -596,6 +596,12 @@ where
         self.dedup_enabled = enabled;
     }
 
+    /// Sets the default progress bar style for newly enqueued timed toasts.
+    /// Existing queued toasts are unaffected.
+    pub fn set_default_progress_bar_style(&mut self, style: ToastProgressBarStyle) {
+        self.default_progress_bar_style = style;
+    }
+
     /// Sets the area for the toast engine. This method allows you to update the area where toasts will be displayed, which can be useful if the layout of your terminal UI changes and you need to adjust the toast display area accordingly.
     pub fn set_area(&mut self, area: Rect) {
         self.set_area_avoiding(area, &[]);
