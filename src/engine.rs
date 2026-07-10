@@ -91,6 +91,7 @@ where
     default_progress_bar: bool,
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
+    dedup_enabled: bool,
     next_id: u64,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -110,6 +111,7 @@ where
     default_progress_bar: bool,
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
+    dedup_enabled: bool,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
@@ -129,6 +131,7 @@ where
             default_progress_bar: false,
             default_progress_bar_style: ToastProgressBarStyle::FullBlock,
             max_queue_depth: 4,
+            dedup_enabled: true,
             tx: None,
         }
     }
@@ -139,6 +142,16 @@ where
     /// Defaults to 4.
     pub fn max_queue_depth(mut self, depth: usize) -> Self {
         self.max_queue_depth = depth.max(1);
+        self
+    }
+
+    /// Enables or disables toast deduplication. When enabled (the default), incoming toasts with the
+    /// same `message` + `toast_type` + `title` as an existing queued toast are not duplicated:
+    /// - **Timed duplicates**: the existing toast's expiry timer is refreshed (update-in-place).
+    /// - **Sticky duplicates**: the new toast is silently skipped.
+    ///   Pass `false` to disable deduplication and allow duplicate toasts.
+    pub fn dedup(mut self, enabled: bool) -> Self {
+        self.dedup_enabled = enabled;
         self
     }
 
@@ -180,7 +193,7 @@ where
 }
 
 /// The type of toast to display. This enum defines the different types of toasts that can be shown, such as informational messages, success messages, warnings, and errors. Each variant can be styled differently when rendered.
-#[derive(Debug, Default, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
 pub enum ToastType {
     #[default]
     Info,
@@ -238,7 +251,12 @@ pub enum ToastInteraction {
     CopyRequested(String),
 }
 
-/// The messages that can be sent to the `ToastEngine` to control the display of toasts. The `Show` variant contains the message to display, the type of toast, and its position, while the `Hide` variant indicates that a specific toast should be hidden by its unique ID.
+/// The messages that can be sent to the `ToastEngine` to control the display of toasts.
+///
+/// - `Show` carries the basic fields (`message`, `toast_type`, `position`) for backward compatibility.
+/// - `ShowBuilder` carries a fully-configured `ToastBuilder` so that all builder fields (title, duration,
+///   keep_on, progress bar, border mode, etc.) are preserved through the event loop.
+/// - `Hide` indicates that a specific toast should be hidden by its unique ID.
 ///
 ///NOTE: You do have to handle the events yourself. Usually, its as simple as matching on the `ToastMessage` in your event loop and calling the appropriate methods on the `ToastEngine` to show or hide toasts based on the received messages.
 #[derive(Debug, Clone)]
@@ -248,13 +266,14 @@ pub enum ToastMessage {
         toast_type: ToastType,
         position: ToastPosition,
     },
+    ShowBuilder(ToastBuilder),
     Hide {
         id: u64,
     },
 }
 
 /// A builder for creating a toast message. This struct allows you to specify the message content, type, position, and size constraints for a toast before showing it using the `ToastEngine`. The builder pattern provides a convenient way to configure the properties of a toast in a fluent manner.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct ToastBuilder {
     title: Option<ToastTitle>,
     message: Cow<'static, str>,
@@ -302,6 +321,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            dedup_enabled,
             next_id,
             tx,
             ..
@@ -314,6 +334,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            dedup_enabled,
             next_id,
             tx,
             queue: VecDeque::new(),
@@ -329,6 +350,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            dedup_enabled,
             tx,
             ..
         }: ToastEngineBuilder<A>,
@@ -340,6 +362,7 @@ where
             default_progress_bar,
             default_progress_bar_style,
             max_queue_depth,
+            dedup_enabled,
             next_id: 0,
             tx,
             queue: VecDeque::new(),
@@ -349,6 +372,9 @@ where
     /// Enqueues a toast. The front of the queue is always the currently displayed toast.
     ///
     /// Queueing rules:
+    /// - If dedup is enabled and a toast with the same `message` + `toast_type` + `title` already
+    ///   exists in the queue, the new toast is not enqueued. For timed duplicates, the existing
+    ///   toast's expiry timer is refreshed instead.
     /// - If the queue is at `max_queue_depth` and the incoming toast is **sticky**, the oldest
     ///   timed toast is displaced to make room. If no timed toast exists, the oldest sticky toast
     ///   is displaced instead.
@@ -358,6 +384,31 @@ where
     pub fn show_toast(&mut self, toast: ToastBuilder) {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
+
+        if self.dedup_enabled {
+            let incoming_title = toast
+                .title
+                .as_ref()
+                .filter(|t| !t.is_empty())
+                .map(|t| t.text.as_str());
+            let incoming_type = toast.toast_type;
+            let incoming_msg = toast.message.as_ref();
+
+            for existing in self.queue.iter_mut() {
+                let title_matches =
+                    existing.title.as_ref().map(|t| t.text.as_str()) == incoming_title;
+                if title_matches
+                    && existing.toast.type_ == incoming_type
+                    && existing.message == incoming_msg
+                {
+                    if !existing.keep_on {
+                        existing.expires_at = Some(Instant::now() + duration);
+                    }
+                    return;
+                }
+            }
+        }
+
         let border_mode = toast.border_mode.unwrap_or(self.default_border_mode);
         let show_progress_bar =
             toast.show_progress_bar.unwrap_or(self.default_progress_bar) && !keep_on;
@@ -540,6 +591,20 @@ where
         } else {
             false
         }
+    }
+
+    /// Enables or disables toast deduplication at runtime. Dedup is enabled by default. When enabled,
+    /// incoming toasts with the same `message` + `toast_type` + `title` as an existing queued toast
+    /// are not duplicated: timed duplicates refresh the existing toast's expiry timer, sticky
+    /// duplicates are skipped. Pass `false` to allow duplicates.
+    pub fn set_dedup(&mut self, enabled: bool) {
+        self.dedup_enabled = enabled;
+    }
+
+    /// Sets the default progress bar style for newly enqueued timed toasts.
+    /// Existing queued toasts are unaffected.
+    pub fn set_default_progress_bar_style(&mut self, style: ToastProgressBarStyle) {
+        self.default_progress_bar_style = style;
     }
 
     /// Sets the area for the toast engine. This method allows you to update the area where toasts will be displayed, which can be useful if the layout of your terminal UI changes and you need to adjust the toast display area accordingly.
@@ -1289,5 +1354,104 @@ mod tests {
         });
 
         assert_eq!(with_title.height, without_title.height);
+    }
+
+    #[test]
+    fn dedup_timed_duplicate_refreshes_expiry() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .dedup(true)
+            .build();
+        engine.show_toast(
+            ToastBuilder::new("saving".into())
+                .duration(Duration::from_secs(5))
+                .toast_type(ToastType::Info),
+        );
+        let first_expiry = engine.queue.front().unwrap().expires_at.unwrap();
+
+        std::thread::sleep(Duration::from_millis(50));
+
+        engine.show_toast(
+            ToastBuilder::new("saving".into())
+                .duration(Duration::from_secs(5))
+                .toast_type(ToastType::Info),
+        );
+
+        assert_eq!(engine.queue_len(), 1, "duplicate should not enqueue");
+        let refreshed_expiry = engine.queue.front().unwrap().expires_at.unwrap();
+        assert!(
+            refreshed_expiry > first_expiry,
+            "expiry should be refreshed"
+        );
+    }
+
+    #[test]
+    fn dedup_sticky_duplicate_is_skipped() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .dedup(true)
+            .build();
+        engine.show_toast(
+            ToastBuilder::new("error".into())
+                .toast_type(ToastType::Error)
+                .keep_on(1),
+        );
+        engine.show_toast(
+            ToastBuilder::new("error".into())
+                .toast_type(ToastType::Error)
+                .keep_on(1),
+        );
+
+        assert_eq!(engine.queue_len(), 1, "sticky duplicate should be skipped");
+    }
+
+    #[test]
+    fn dedup_different_type_is_not_duplicate() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .dedup(true)
+            .build();
+        engine.show_toast(ToastBuilder::new("msg".into()).toast_type(ToastType::Info));
+        engine.show_toast(ToastBuilder::new("msg".into()).toast_type(ToastType::Warning));
+
+        assert_eq!(engine.queue_len(), 2, "different type should not dedup");
+    }
+
+    #[test]
+    fn dedup_different_title_is_not_duplicate() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .dedup(true)
+            .build();
+        engine.show_toast(ToastBuilder::new("msg".into()).title("A"));
+        engine.show_toast(ToastBuilder::new("msg".into()).title("B"));
+
+        assert_eq!(engine.queue_len(), 2, "different title should not dedup");
+    }
+
+    #[test]
+    fn dedup_enabled_by_default() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        engine.show_toast(ToastBuilder::new("msg".into()));
+
+        assert_eq!(engine.queue_len(), 1, "dedup should be on by default");
+    }
+
+    #[test]
+    fn dedup_runtime_toggle() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.set_dedup(false);
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        engine.set_dedup(true);
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        assert_eq!(
+            engine.queue_len(),
+            1,
+            "dedup should work after set_dedup(true)"
+        );
+        engine.set_dedup(false);
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        assert_eq!(
+            engine.queue_len(),
+            2,
+            "dedup should be off after set_dedup(false)"
+        );
     }
 }

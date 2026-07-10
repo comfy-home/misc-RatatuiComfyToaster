@@ -1,7 +1,7 @@
 [package]
 name = "ratatui-comfy-toaster"
 description = "An advanced toast engine for ratatui. Timed toast notifications | Sticky toasts with left-click to dismiss & right-click to copy | Presets | and more..."
-version = "0.5.2"
+version = "0.5.3"
 rust-version = "1.88"
 edition = "2024"
 authors = ["ComfyHome™ <dev@comfyhome.io>"]
@@ -32,7 +32,8 @@ tokio = ["dep:tokio"]
 
 [dev-dependencies]
 anyhow = "1.0.103"
+color-eyre = "0.6"
 tokio = { version = "1.50", features = ["rt-multi-thread", "sync", "time", "macros"] }
-ratatui = { version = "0.30.2" }
+ratatui = { version = "0.30.2", features = ["crossterm"] }
 tachyonfx = { version = "0.25", default-features = false, features = ["std", "std-duration"] }
 tokio-util = "0.7.18"
