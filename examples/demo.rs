@@ -34,7 +34,7 @@ use ratatui::{
 
 use ratatui_comfy_toaster::{
     ToastBorderMode, ToastBuilder, ToastEngine, ToastEngineBuilder, ToastInteraction,
-    ToastPreset, ToastPosition, ToastProgressBarStyle, ToastShortcut, ToastType,
+    ToastPosition, ToastPreset, ToastProgressBarStyle, ToastShortcut, ToastType,
 };
 
 // ---------------------------------------------------------------------------
@@ -60,18 +60,14 @@ const DEMOS: &[ToastDemo] = &[
         description: "Green success toast confirming an operation completed.",
         code: r#"ToastBuilder::new("Build succeeded".into())
     .toast_type(ToastType::Success)"#,
-        build: || {
-            ToastBuilder::new("Build succeeded".into()).toast_type(ToastType::Success)
-        },
+        build: || ToastBuilder::new("Build succeeded".into()).toast_type(ToastType::Success),
     },
     ToastDemo {
         name: "Warning",
         description: "Yellow warning toast for non-critical issues.",
         code: r#"ToastBuilder::new("Low disk space".into())
     .toast_type(ToastType::Warning)"#,
-        build: || {
-            ToastBuilder::new("Low disk space".into()).toast_type(ToastType::Warning)
-        },
+        build: || ToastBuilder::new("Low disk space".into()).toast_type(ToastType::Warning),
     },
     ToastDemo {
         name: "Sticky Error",
@@ -192,9 +188,7 @@ const DEMOS: &[ToastDemo] = &[
         description: "Toast positioned at the top-left corner of the screen.",
         code: r#"ToastBuilder::new("Notification".into())
     .position(ToastPosition::TopLeft)"#,
-        build: || {
-            ToastBuilder::new("Notification".into()).position(ToastPosition::TopLeft)
-        },
+        build: || ToastBuilder::new("Notification".into()).position(ToastPosition::TopLeft),
     },
     ToastDemo {
         name: "Center Position",
@@ -248,9 +242,7 @@ ToastBuilder::new("Waiting for input...".into())
         description: "Toast with a custom 1-second duration for quick flash messages.",
         code: r#"ToastBuilder::new("Quick flash".into())
     .duration(Duration::from_secs(1))"#,
-        build: || {
-            ToastBuilder::new("Quick flash".into()).duration(Duration::from_secs(1))
-        },
+        build: || ToastBuilder::new("Quick flash".into()).duration(Duration::from_secs(1)),
     },
     ToastDemo {
         name: "Sticky + Title + Highlight",
@@ -346,8 +338,7 @@ impl App {
                         let interaction = self.engine.handle_shortcut(ToastShortcut::Copy);
                         match interaction {
                             ToastInteraction::CopyRequested(text) => {
-                                self.last_interaction =
-                                    format!("Copied: {text}");
+                                self.last_interaction = format!("Copied: {text}");
                             }
                             ToastInteraction::Dismissed => {
                                 self.last_interaction = "Dismissed".to_string();
@@ -370,8 +361,11 @@ impl App {
                     if mouse.kind == MouseEventKind::Down(MouseButton::Left) {
                         self.handle_click(mouse.column, mouse.row);
                     } else if mouse.kind == MouseEventKind::Down(MouseButton::Right) {
-                        let interaction =
-                            self.engine.handle_click(mouse.column, mouse.row, ratatui_comfy_toaster::ToastMouseButton::Right);
+                        let interaction = self.engine.handle_click(
+                            mouse.column,
+                            mouse.row,
+                            ratatui_comfy_toaster::ToastMouseButton::Right,
+                        );
                         if let ToastInteraction::CopyRequested(text) = interaction {
                             self.last_interaction = format!("Copied: {text}");
                         }
@@ -393,11 +387,9 @@ impl App {
 
     fn handle_click(&mut self, col: u16, row: u16) {
         if self.engine.contains(col, row) {
-            let interaction = self.engine.handle_click(
-                col,
-                row,
-                ratatui_comfy_toaster::ToastMouseButton::Left,
-            );
+            let interaction =
+                self.engine
+                    .handle_click(col, row, ratatui_comfy_toaster::ToastMouseButton::Left);
             if interaction == ToastInteraction::Dismissed {
                 self.last_interaction = "Dismissed (click)".to_string();
             }
@@ -428,12 +420,18 @@ impl App {
             .style(Style::new().bg(bg))
             .render(area, frame.buffer_mut());
 
-        let [header, body, footer] =
-            Layout::vertical([Constraint::Length(1), Constraint::Fill(1), Constraint::Min(2)])
-                .areas(area);
+        let [header, body, footer] = Layout::vertical([
+            Constraint::Length(1),
+            Constraint::Fill(1),
+            Constraint::Min(2),
+        ])
+        .areas(area);
 
         Line::from(vec![
-            Span::styled("ratatui-comfy-toaster", Style::new().fg(Color::LightBlue).bold()),
+            Span::styled(
+                "ratatui-comfy-toaster",
+                Style::new().fg(Color::LightBlue).bold(),
+            ),
             Span::raw(" "),
             Span::styled("demo", Style::new().fg(Color::DarkGray)),
         ])
@@ -529,7 +527,11 @@ impl App {
         let queue_info = format!(
             "Queue: {} toast(s){}",
             self.engine.queue_len(),
-            if self.engine.is_keep_on() { " (sticky front)" } else { "" },
+            if self.engine.is_keep_on() {
+                " (sticky front)"
+            } else {
+                ""
+            },
         );
         lines.push(Line::from(""));
         lines.push(Line::from(Span::styled(
@@ -565,7 +567,12 @@ impl App {
             vec![key("Enter"), dim(" fire toast")],
             vec![key("d"), dim(" dismiss sticky")],
             vec![key("c"), dim(" copy")],
-            vec![key("B"), dim(" bar style ("), Span::styled(bar_style_label, Style::new().fg(Color::DarkGray)), dim(")")],
+            vec![
+                key("B"),
+                dim(" bar style ("),
+                Span::styled(bar_style_label, Style::new().fg(Color::DarkGray)),
+                dim(")"),
+            ],
             vec![key("Click"), dim(" fire / dismiss")],
             vec![key("Right-Click"), dim(" copy toast")],
             vec![key("q"), dim(" quit")],
