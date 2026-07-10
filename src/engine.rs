@@ -149,7 +149,7 @@ where
     /// same `message` + `toast_type` + `title` as an existing queued toast are not duplicated:
     /// - **Timed duplicates**: the existing toast's expiry timer is refreshed (update-in-place).
     /// - **Sticky duplicates**: the new toast is silently skipped.
-    /// Pass `false` to disable deduplication and allow duplicate toasts.
+    ///   Pass `false` to disable deduplication and allow duplicate toasts.
     pub fn dedup(mut self, enabled: bool) -> Self {
         self.dedup_enabled = enabled;
         self
@@ -386,12 +386,17 @@ where
         let keep_on = toast.keep_on > 0;
 
         if self.dedup_enabled {
-            let incoming_title = toast.title.as_ref().filter(|t| !t.is_empty()).map(|t| t.text.as_str());
+            let incoming_title = toast
+                .title
+                .as_ref()
+                .filter(|t| !t.is_empty())
+                .map(|t| t.text.as_str());
             let incoming_type = toast.toast_type;
             let incoming_msg = toast.message.as_ref();
 
             for existing in self.queue.iter_mut() {
-                let title_matches = existing.title.as_ref().map(|t| t.text.as_str()) == incoming_title;
+                let title_matches =
+                    existing.title.as_ref().map(|t| t.text.as_str()) == incoming_title;
                 if title_matches
                     && existing.toast.type_ == incoming_type
                     && existing.message == incoming_msg
@@ -1422,8 +1427,7 @@ mod tests {
 
     #[test]
     fn dedup_enabled_by_default() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.show_toast(ToastBuilder::new("msg".into()));
         engine.show_toast(ToastBuilder::new("msg".into()));
 
@@ -1432,15 +1436,22 @@ mod tests {
 
     #[test]
     fn dedup_runtime_toggle() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.set_dedup(false);
         engine.show_toast(ToastBuilder::new("msg".into()));
         engine.set_dedup(true);
         engine.show_toast(ToastBuilder::new("msg".into()));
-        assert_eq!(engine.queue_len(), 1, "dedup should work after set_dedup(true)");
+        assert_eq!(
+            engine.queue_len(),
+            1,
+            "dedup should work after set_dedup(true)"
+        );
         engine.set_dedup(false);
         engine.show_toast(ToastBuilder::new("msg".into()));
-        assert_eq!(engine.queue_len(), 2, "dedup should be off after set_dedup(false)");
+        assert_eq!(
+            engine.queue_len(),
+            2,
+            "dedup should be off after set_dedup(false)"
+        );
     }
 }
