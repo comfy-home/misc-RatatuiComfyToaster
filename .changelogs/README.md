@@ -2,6 +2,74 @@
 
 Newest archived changelogs first. When multiple archived files represent the same version, only the newest archive is included here.
 
+## Changelog `v0.5.3` <sup><div align="end">🗓️ 2026-07-10</div></sup>
+
+### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+#### **1. &nbsp;&nbsp;&nbsp;(**Enhancement**) Tokio integration**
+- New: `ToastMessage::ShowBuilder` variant for full toast configuration through the event loop
+  - Previously, `ToastMessage::Show` only carried message, toast_type, and position — all other builder configuration (title, duration, keep_on, progress_bar, border_mode, etc.) was lost when sending a toast through the tokio event loop.
+  - A new `ShowBuilder(ToastBuilder)` variant has been added that carries the complete builder, preserving all fields.
+  - **Non-breaking**. The original Show { message, toast_type, position } variant remains unchanged. If you already used Tokio, it'll keep working without modification. Use ShowBuilder when you need full builder field support through the event loop.
+
+#### **2. &nbsp;&nbsp;&nbsp;(**New Feature**) Toast deduplication (enabled by default)**
+- The Comfy toaster now automatically prevents duplicate toasts from cluttering the queue. When a new toast has the same message, type, and title as one already displayed, it's not duplicated:
+  - **Timed toasts** — the existing toast's timer is refreshed instead of queuing a copy
+  - **Sticky toasts** — the duplicate is silently skipped
+- This is on by default. If you need duplicates (e.g. for a counter pattern), disable with `.dedup(false)` at build time or `engine.set_dedup(false)` at runtime.
+- Also: ToastType now derives `PartialEq` and `Eq`, so you can compare toast types with ==.
+  - `Eq` was needed for `dedup` implementation 
+
+#### **3. &nbsp;&nbsp;&nbsp;(**Enhancement**) Visual improvement to Progress Bar in `Minimal` config **
+- Replace "_" with "🭸" (U+1FB78) for filled segments in ToastProgressBarStyle::Minimal
+- Reason: the underscore rendered horribly
+
+#### **4. &nbsp;&nbsp;&nbsp;(**NEW**) Demo example**
+- run via `cargo run --example demo`
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br>
+
+### 🧩 Features
+
+* add toast deduplication with configurable enable/disable <sub><sup><sup>_44a66b1_</sup></sup></sub>
+
+* add color-eyre dev dependency and enable crossterm feature for ratatui <sub><sup><sup>_ae27119_</sup></sup></sub>
+
+* add interactive demo example for ratatui-comfy-toaster <sub><sup><sup>_ecf6f90_</sup></sup></sub>
+
+### 🔧 Maintenance
+
+* CG app version bump to v0.5.3 <sub><sup><sup>_531a52c_</sup></sup></sub>
+
+### ℹ️ Documentation
+
+* reorganize README with collapsible sections and update version references <sub><sup><sup>_a89080d_</sup></sup></sub>
+
+### ♻️ Refactor
+
+* add ShowBuilder variant to ToastMessage and make ToastBuilder Clone <sub><sup><sup>_4770018_</sup></sup></sub>
+
+* replace underscore with rounded bottom bar symbol in Minimal progress bar style <sub><sup><sup>_3fd910f_</sup></sup></sub>
+
+* add set_default_progress_bar_style method to ToastEngine <sub><sup><sup>_6f384be_</sup></sup></sub>
+
+* apply rustfmt formatting to demo.rs example <sub><sup><sup>_e750246_</sup></sup></sub>
+
+* apply rustfmt formatting to engine.rs <sub><sup><sup>_5ea1770_</sup></sup></sub>
+
+### 📝 Other
+
+* Merge branch 'main' into 0.5.x <sub><sup><sup>_2596210_</sup></sup></sub>
+
+* Merge pull request #7 (via ComfyGit) <sub><sup><sup>_4a09148_</sup></sup></sub>
+
+* Merge pull request #8 (via ComfyGit) <sub><sup><sup>_993621d_</sup></sup></sub>
+
+---
+
 ## Changelog `v0.5.2` <sup><div align="end">🗓️ 2026-07-09</div></sup>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
