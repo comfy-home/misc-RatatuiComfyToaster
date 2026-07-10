@@ -80,7 +80,7 @@ fn render_progress_bar(
     let (filled_symbol, empty_symbol) = match style {
         ToastProgressBarStyle::FullBlock => ("█", "░"),
         ToastProgressBarStyle::HalfBlock => ("▄", " "),
-        ToastProgressBarStyle::Minimal => ("_", " "),
+        ToastProgressBarStyle::Minimal => ("🭸", " "),
     };
 
     for offset in 0..area.width {
@@ -440,7 +440,7 @@ mod tests {
         .with_progress_ratio(Some(0.5))
         .render_ref(area, &mut buf);
 
-        assert_eq!(buf[(2, 2)].symbol(), "_");
+        assert_eq!(buf[(2, 2)].symbol(), "🭸");
     }
 
     #[test]
