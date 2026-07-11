@@ -218,7 +218,7 @@ ToastBuilder::new("Details".into())
 | Align     | `Start`, `Center`                     | `Start`             |
 | Style     | plain, `.title_highlight()`           | plain               |
 
-With `title_highlight()`, the title background uses the toast type color and the text uses a contrasting foreground (white on red/yellow/green/blue). For start alignment, the highlight extends through the left border column (no gray gap before the title band) and one column past the title text; centered highlights add two columns on each side of the title.
+With `title_highlight()`, the title background uses the toast type color and the text uses a contrasting foreground computed via WCAG relative luminance — black on bright backgrounds (yellow, green), white on dark backgrounds (blue, red). For start alignment, the highlight extends through the left border column (no gray gap before the title band) and one column past the title text; centered highlights add two columns on each side of the title.
 
 Gapped separator rows use the toast type color for dot/line glyphs. Toasts without a title keep top padding (an empty row above the message); titled toasts start the title on the first inner row.
 
@@ -241,17 +241,17 @@ ToastBuilder::new("Target path cannot be empty".into())
     .keep_on(1);
 ```
 
-| `ToastPreset` | Layout | Separator | Align | Highlight |
-|---------------|--------|-----------|-------|-------------|
-| `MessageOnly` | — | — | — | — |
-| `CompactPlainStart` | compact | — | start | no |
-| `CompactHighlightStart` | compact | — | start | yes |
-| `CompactPlainCenter` | compact | — | center | no |
-| `CompactHighlightCenter` | compact | — | center | yes |
-| `GappedDotStart` | gapped | dot | start | no |
-| `GappedLineStart` | gapped | line | start | no |
-| `GappedEmptyStart` | gapped | empty | start | no |
-| `GappedDotHighlightCenter` | gapped | dot | center | yes |
+| `ToastPreset`              | Layout  | Separator | Align  | Highlight |
+| ----------------------------| ---------| -----------| --------| -----------|
+| `MessageOnly`              | —       | —         | —      | —         |
+| `CompactPlainStart`        | compact | —         | start  | no        |
+| `CompactHighlightStart`    | compact | —         | start  | yes       |
+| `CompactPlainCenter`       | compact | —         | center | no        |
+| `CompactHighlightCenter`   | compact | —         | center | yes       |
+| `GappedDotStart`           | gapped  | dot       | start  | no        |
+| `GappedLineStart`          | gapped  | line      | start  | no        |
+| `GappedEmptyStart`         | gapped  | empty     | start  | no        |
+| `GappedDotHighlightCenter` | gapped  | dot       | center | yes       |
 
 `CompactHighlightStart` extends the highlight band through the left border column so it meets the side rail with no gray gap.
 
@@ -311,7 +311,7 @@ Available styles:
 
 - `ToastProgressBarStyle::FullBlock` uses `█`
 - `ToastProgressBarStyle::HalfBlock` uses `▄`
-- `ToastProgressBarStyle::Minimal` uses `_`
+- `ToastProgressBarStyle::Minimal` uses `🭸`
 
 
 <details><summary>Click here for more info...</summary>
@@ -500,6 +500,7 @@ Expand the section below to see API reference tables...
 | `handle_click(col, row, button)` | Handle mouse click |
 | `handle_shortcut(shortcut)` | Handle keyboard shortcut |
 | `set_dedup(bool)` | Enable/disable deduplication at runtime |
+| `set_default_progress_bar_style(style)` | Change default progress bar style at runtime |
 | `set_area(rect)` | Update display area |
 | `set_area_avoiding(rect, occupied)` | Update area with overlap avoidance |
 | `tick()` | Advance queue if front toast has expired |
