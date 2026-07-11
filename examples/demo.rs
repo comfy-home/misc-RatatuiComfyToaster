@@ -45,7 +45,7 @@ struct ToastDemo {
     name: &'static str,
     description: &'static str,
     code: &'static str,
-    build: fn() -> ToastBuilder,
+    build: fn() -> Vec<ToastBuilder>,
 }
 
 const DEMOS: &[ToastDemo] = &[
@@ -53,21 +53,21 @@ const DEMOS: &[ToastDemo] = &[
         name: "Basic Info",
         description: "Simple timed info toast with default settings (3s, bottom-right).",
         code: r#"ToastBuilder::new("File saved".into())"#,
-        build: || ToastBuilder::new("File saved".into()),
+        build: || vec![ToastBuilder::new("File saved".into())],
     },
     ToastDemo {
         name: "Success",
         description: "Green success toast confirming an operation completed.",
         code: r#"ToastBuilder::new("Build succeeded".into())
     .toast_type(ToastType::Success)"#,
-        build: || ToastBuilder::new("Build succeeded".into()).toast_type(ToastType::Success),
+        build: || vec![ToastBuilder::new("Build succeeded".into()).toast_type(ToastType::Success)],
     },
     ToastDemo {
         name: "Warning",
         description: "Yellow warning toast for non-critical issues.",
         code: r#"ToastBuilder::new("Low disk space".into())
     .toast_type(ToastType::Warning)"#,
-        build: || ToastBuilder::new("Low disk space".into()).toast_type(ToastType::Warning),
+        build: || vec![ToastBuilder::new("Low disk space".into()).toast_type(ToastType::Warning)],
     },
     ToastDemo {
         name: "Sticky Error",
@@ -76,9 +76,11 @@ const DEMOS: &[ToastDemo] = &[
     .toast_type(ToastType::Error)
     .keep_on(1)"#,
         build: || {
-            ToastBuilder::new("Cargo.toml: missing [dependencies]".into())
-                .toast_type(ToastType::Error)
-                .keep_on(1)
+            vec![
+                ToastBuilder::new("Cargo.toml: missing [dependencies]".into())
+                    .toast_type(ToastType::Error)
+                    .keep_on(1),
+            ]
         },
     },
     ToastDemo {
@@ -88,9 +90,11 @@ const DEMOS: &[ToastDemo] = &[
     .title("New Scope:")
     .toast_type(ToastType::Error)"#,
         build: || {
-            ToastBuilder::new("target path cannot be empty".into())
-                .title("New Scope:")
-                .toast_type(ToastType::Error)
+            vec![
+                ToastBuilder::new("target path cannot be empty".into())
+                    .title("New Scope:")
+                    .toast_type(ToastType::Error),
+            ]
         },
     },
     ToastDemo {
@@ -100,9 +104,11 @@ const DEMOS: &[ToastDemo] = &[
     .title_gapped("New Scope:")
     .toast_type(ToastType::Error)"#,
         build: || {
-            ToastBuilder::new("target path cannot be empty".into())
-                .title_gapped("New Scope:")
-                .toast_type(ToastType::Error)
+            vec![
+                ToastBuilder::new("target path cannot be empty".into())
+                    .title_gapped("New Scope:")
+                    .toast_type(ToastType::Error),
+            ]
         },
     },
     ToastDemo {
@@ -113,10 +119,12 @@ const DEMOS: &[ToastDemo] = &[
     .title_highlight()
     .toast_type(ToastType::Error)"#,
         build: || {
-            ToastBuilder::new("target path cannot be empty".into())
-                .title("New Scope:")
-                .title_highlight()
-                .toast_type(ToastType::Error)
+            vec![
+                ToastBuilder::new("target path cannot be empty".into())
+                    .title("New Scope:")
+                    .title_highlight()
+                    .toast_type(ToastType::Error),
+            ]
         },
     },
     ToastDemo {
@@ -126,9 +134,11 @@ const DEMOS: &[ToastDemo] = &[
     .preset(ToastPreset::GappedDotHighlightCenter, "New Scope:")
     .toast_type(ToastType::Error)"#,
         build: || {
-            ToastBuilder::new("target path cannot be empty".into())
-                .preset(ToastPreset::GappedDotHighlightCenter, "New Scope:")
-                .toast_type(ToastType::Error)
+            vec![
+                ToastBuilder::new("target path cannot be empty".into())
+                    .preset(ToastPreset::GappedDotHighlightCenter, "New Scope:")
+                    .toast_type(ToastType::Error),
+            ]
         },
     },
     ToastDemo {
@@ -138,9 +148,11 @@ const DEMOS: &[ToastDemo] = &[
     .preset(ToastPreset::CompactHighlightStart, "New Scope:")
     .toast_type(ToastType::Error)"#,
         build: || {
-            ToastBuilder::new("target path cannot be empty".into())
-                .preset(ToastPreset::CompactHighlightStart, "New Scope:")
-                .toast_type(ToastType::Error)
+            vec![
+                ToastBuilder::new("target path cannot be empty".into())
+                    .preset(ToastPreset::CompactHighlightStart, "New Scope:")
+                    .toast_type(ToastType::Error),
+            ]
         },
     },
     ToastDemo {
@@ -151,10 +163,12 @@ const DEMOS: &[ToastDemo] = &[
     .duration(Duration::from_secs(5))
     .toast_type(ToastType::Info)"#,
         build: || {
-            ToastBuilder::new("Saving...".into())
-                .show_progress_bar(true)
-                .duration(Duration::from_secs(5))
-                .toast_type(ToastType::Info)
+            vec![
+                ToastBuilder::new("Saving...".into())
+                    .show_progress_bar(true)
+                    .duration(Duration::from_secs(5))
+                    .toast_type(ToastType::Info),
+            ]
         },
     },
     ToastDemo {
@@ -165,10 +179,12 @@ const DEMOS: &[ToastDemo] = &[
     .progress_bar_style(ToastProgressBarStyle::HalfBlock)
     .duration(Duration::from_secs(5))"#,
         build: || {
-            ToastBuilder::new("Uploading...".into())
-                .show_progress_bar(true)
-                .progress_bar_style(ToastProgressBarStyle::HalfBlock)
-                .duration(Duration::from_secs(5))
+            vec![
+                ToastBuilder::new("Uploading...".into())
+                    .show_progress_bar(true)
+                    .progress_bar_style(ToastProgressBarStyle::HalfBlock)
+                    .duration(Duration::from_secs(5)),
+            ]
         },
     },
     ToastDemo {
@@ -178,9 +194,11 @@ const DEMOS: &[ToastDemo] = &[
     .border_mode(ToastBorderMode::Full)
     .toast_type(ToastType::Success)"#,
         build: || {
-            ToastBuilder::new("Encrypted transfer complete".into())
-                .border_mode(ToastBorderMode::Full)
-                .toast_type(ToastType::Success)
+            vec![
+                ToastBuilder::new("Encrypted transfer complete".into())
+                    .border_mode(ToastBorderMode::Full)
+                    .toast_type(ToastType::Success),
+            ]
         },
     },
     ToastDemo {
@@ -188,7 +206,7 @@ const DEMOS: &[ToastDemo] = &[
         description: "Toast positioned at the top-left corner of the screen.",
         code: r#"ToastBuilder::new("Notification".into())
     .position(ToastPosition::TopLeft)"#,
-        build: || ToastBuilder::new("Notification".into()).position(ToastPosition::TopLeft),
+        build: || vec![ToastBuilder::new("Notification".into()).position(ToastPosition::TopLeft)],
     },
     ToastDemo {
         name: "Center Position",
@@ -197,9 +215,11 @@ const DEMOS: &[ToastDemo] = &[
     .position(ToastPosition::Center)
     .duration(Duration::from_secs(2))"#,
         build: || {
-            ToastBuilder::new("Press any key to continue".into())
-                .position(ToastPosition::Center)
-                .duration(Duration::from_secs(2))
+            vec![
+                ToastBuilder::new("Press any key to continue".into())
+                    .position(ToastPosition::Center)
+                    .duration(Duration::from_secs(2)),
+            ]
         },
     },
     ToastDemo {
@@ -207,7 +227,7 @@ const DEMOS: &[ToastDemo] = &[
         description: "Toast with a custom offset from its default position.",
         code: r#"ToastBuilder::new("Shifted toast".into())
     .offset(-5, 3)"#,
-        build: || ToastBuilder::new("Shifted toast".into()).offset(-5, 3),
+        build: || vec![ToastBuilder::new("Shifted toast".into()).offset(-5, 3)],
     },
     ToastDemo {
         name: "Long Message Wrap",
@@ -217,9 +237,11 @@ const DEMOS: &[ToastDemo] = &[
      be automatically wrapped".into(),
 )"#,
         build: || {
+            vec![
             ToastBuilder::new(
                 "This is a very long message that will be automatically wrapped to fit the toast width and not be clipped".into(),
-            )
+            ),
+        ]
         },
     },
     ToastDemo {
@@ -231,10 +253,12 @@ ToastBuilder::new("Waiting for input...".into())
     .keep_on(1)
     .toast_type(ToastType::Warning)"#,
         build: || {
-            ToastBuilder::new("Waiting for input...".into())
-                .show_progress_bar(true)
-                .keep_on(1)
-                .toast_type(ToastType::Warning)
+            vec![
+                ToastBuilder::new("Waiting for input...".into())
+                    .show_progress_bar(true)
+                    .keep_on(1)
+                    .toast_type(ToastType::Warning),
+            ]
         },
     },
     ToastDemo {
@@ -242,7 +266,7 @@ ToastBuilder::new("Waiting for input...".into())
         description: "Toast with a custom 1-second duration for quick flash messages.",
         code: r#"ToastBuilder::new("Quick flash".into())
     .duration(Duration::from_secs(1))"#,
-        build: || ToastBuilder::new("Quick flash".into()).duration(Duration::from_secs(1)),
+        build: || vec![ToastBuilder::new("Quick flash".into()).duration(Duration::from_secs(1))],
     },
     ToastDemo {
         name: "Sticky + Title + Highlight",
@@ -254,11 +278,71 @@ ToastBuilder::new("Waiting for input...".into())
     .toast_type(ToastType::Error)
     .keep_on(1)"#,
         build: || {
-            ToastBuilder::new("Connection refused: localhost:8080".into())
-                .title_gapped("Network Error")
-                .title_highlight()
-                .toast_type(ToastType::Error)
-                .keep_on(1)
+            vec![
+                ToastBuilder::new("Connection refused: localhost:8080".into())
+                    .title_gapped("Network Error")
+                    .title_highlight()
+                    .toast_type(ToastType::Error)
+                    .keep_on(1),
+            ]
+        },
+    },
+    ToastDemo {
+        name: "★ Presentation: All Types",
+        description: "Fires all 4 toast types with highlighted titles — showcases contrasting_fg readability fix.",
+        code: r#"// All four types with highlighted titles
+// to demonstrate contrast fix (2.4):
+//   Yellow/Green → black text
+//   Blue/Red     → white text
+
+vec![
+    ToastBuilder::new("System information updated".into())
+        .title_gapped("Info")
+        .title_highlight()
+        .toast_type(ToastType::Info)
+        .duration(Duration::from_secs(6)),
+
+    ToastBuilder::new("All tests passed (37/37)".into())
+        .title_gapped("Success")
+        .title_highlight()
+        .toast_type(ToastType::Success)
+        .duration(Duration::from_secs(6)),
+
+    ToastBuilder::new("Deprecated API usage detected".into())
+        .title_gapped("Warning")
+        .title_highlight()
+        .toast_type(ToastType::Warning)
+        .duration(Duration::from_secs(6)),
+
+    ToastBuilder::new("Failed to connect to database".into())
+        .title_gapped("Error")
+        .title_highlight()
+        .toast_type(ToastType::Error)
+        .duration(Duration::from_secs(6)),
+]"#,
+        build: || {
+            vec![
+                ToastBuilder::new("System information updated".into())
+                    .title_gapped("Info")
+                    .title_highlight()
+                    .toast_type(ToastType::Info)
+                    .duration(Duration::from_secs(6)),
+                ToastBuilder::new("All tests passed (37/37)".into())
+                    .title_gapped("Success")
+                    .title_highlight()
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(6)),
+                ToastBuilder::new("Deprecated API usage detected".into())
+                    .title_gapped("Warning")
+                    .title_highlight()
+                    .toast_type(ToastType::Warning)
+                    .duration(Duration::from_secs(6)),
+                ToastBuilder::new("Failed to connect to database".into())
+                    .title_gapped("Error")
+                    .title_highlight()
+                    .toast_type(ToastType::Error)
+                    .duration(Duration::from_secs(6)),
+            ]
         },
     },
 ];
@@ -283,11 +367,12 @@ impl Default for App {
             engine: ToastEngineBuilder::new(Rect::new(0, 0, 120, 40))
                 .default_duration(Duration::from_secs(3))
                 .default_progress_bar(true)
+                .default_progress_bar_style(ToastProgressBarStyle::HalfBlock)
                 .build(),
             last_toast_name: "",
             last_interaction: String::new(),
             list_area: Rect::default(),
-            progress_bar_style: ToastProgressBarStyle::FullBlock,
+            progress_bar_style: ToastProgressBarStyle::HalfBlock,
         }
     }
 }
@@ -303,8 +388,10 @@ impl App {
             return;
         }
         let demo = &DEMOS[idx];
-        let builder = (demo.build)();
-        self.engine.show_toast(builder);
+        let builders = (demo.build)();
+        for builder in builders {
+            self.engine.show_toast(builder);
+        }
         self.last_toast_name = demo.name;
         self.last_interaction.clear();
     }
@@ -423,7 +510,7 @@ impl App {
         let [header, body, footer] = Layout::vertical([
             Constraint::Length(1),
             Constraint::Fill(1),
-            Constraint::Min(2),
+            Constraint::Length(3),
         ])
         .areas(area);
 
@@ -441,8 +528,8 @@ impl App {
         self.draw_body(frame, body);
         self.draw_footer(frame, footer);
 
-        self.engine.set_area(area);
-        self.engine.render_ref(area, frame.buffer_mut());
+        self.engine.set_area(body);
+        self.engine.render_ref(body, frame.buffer_mut());
     }
 
     fn draw_body(&mut self, frame: &mut Frame, area: Rect) {
