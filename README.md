@@ -16,9 +16,39 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ### ✨ Release Notes
 
-<details><summary>👀 What's new in v0.5.2 ...</summary>
+<details><summary>👀 What's new in v0.5.3 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+#### **1. &nbsp;&nbsp;&nbsp;(**Enhancement**) Tokio integration**
+- New: `ToastMessage::ShowBuilder` variant for full toast configuration through the event loop
+  - Previously, `ToastMessage::Show` only carried message, toast_type, and position — all other builder configuration (title, duration, keep_on, progress_bar, border_mode, etc.) was lost when sending a toast through the tokio event loop.
+  - A new `ShowBuilder(ToastBuilder)` variant has been added that carries the complete builder, preserving all fields.
+  - **Non-breaking**. The original Show { message, toast_type, position } variant remains unchanged. If you already used Tokio, it'll keep working without modification. Use ShowBuilder when you need full builder field support through the event loop.
+
+#### **2. &nbsp;&nbsp;&nbsp;(**New Feature**) Toast deduplication (enabled by default)**
+- The Comfy toaster now automatically prevents duplicate toasts from cluttering the queue. When a new toast has the same message, type, and title as one already displayed, it's not duplicated:
+  - **Timed toasts** — the existing toast's timer is refreshed instead of queuing a copy
+  - **Sticky toasts** — the duplicate is silently skipped
+- This is on by default. If you need duplicates (e.g. for a counter pattern), disable with `.dedup(false)` at build time or `engine.set_dedup(false)` at runtime.
+- Also: ToastType now derives `PartialEq` and `Eq`, so you can compare toast types with ==.
+  - `Eq` was needed for `dedup` implementation 
+
+#### **3. &nbsp;&nbsp;&nbsp;(**Enhancement**) Visual improvement to Progress Bar in `Minimal` config **
+- Replace "_" with "🭸" (U+1FB78) for filled segments in ToastProgressBarStyle::Minimal
+- Reason: the underscore rendered horribly
+
+#### **4. &nbsp;&nbsp;&nbsp;(**NEW**) Demo example**
+- run via `cargo run --example demo`
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br><br>
+
+<details><summary>👀 See previous changes...</summary>
+<br>
+<details><summary>v0-5-2 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;(Bugfix) Tokio `Hide` dismisses wrong toast**
 - `ToastMessage::Hide` now carries a toast ID (`Hide { id: u64 }`). Added `hide_toast_by_id(id)` to dismiss a specific toast by identity, preventing stale timeout messages from removing unrelated toasts. `hide_toast()` remains for backward compatibility for non-tokio applications.
@@ -43,10 +73,8 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <sub>...  🎉 Enjoy!</sub>
 
-<br><br>
-
-<details><summary>👀 See previous changes...</summary>
 <br>
+</details>
 <details><summary>v0-4-3 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;Updated:**
@@ -86,35 +114,16 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <br>
 </details>
-<details><summary>v0-3-2 ...</summary>
-
-#### **1. &nbsp;&nbsp;&nbsp;Expiration Progress Bar**
-- Now your timed toasts can display an optional expiry bar
-- Available are 3 styles:
-    - FullBlock: ████
-    - HalfBlock: ▄▄▄▄ 
-    - Minimal: ____
-- See documentation for more info...
-
-#### **2. &nbsp;&nbsp;&nbsp;Toasts now support two border modes:**
-- `ToastBorderMode::SideRails` keeps the original left/right look
-- `ToastBorderMode::Full` renders a full box border for stronger separation
-    - It's useful mainly with `Center` positioned toasts
-
-
-<sub>...  🎉 Enjoy!</sub>
-
-<br>
-</details>
 </details>
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.5.2)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.5.3)</sup>
 
 ---
 
 </details>
+
 
 
 
