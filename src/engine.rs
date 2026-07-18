@@ -743,7 +743,7 @@ where
         if needs_recalc {
             toast.area = calculate_toast_area_with_layout(ToastLayoutParams {
                 title: toast.title.as_ref(),
-                message: &toast.message,
+                message: &toast.toast.message,
                 position: toast.position,
                 constraint: &toast.constraint,
                 offset: toast.offset,
@@ -847,7 +847,7 @@ where
         for toast in self.queue.iter_mut() {
             let desired_area = calculate_toast_area_with_layout(ToastLayoutParams {
                 title: toast.title.as_ref(),
-                message: &toast.message,
+                message: &toast.toast.message,
                 position: toast.position,
                 constraint: &toast.constraint,
                 offset: toast.offset,
