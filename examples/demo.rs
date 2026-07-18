@@ -425,6 +425,39 @@ engine.update_toast_by_id(
                 .show_progress_bar(false)
         }),
     },
+    ToastDemo {
+        name: "★ Dedup Counter",
+        description: "Fires 5 identical toasts rapidly — dedup consolidates them into one with a [4x] prefix.",
+        code: r#"// 5 identical toasts → dedup keeps 1, counter shows [4x]
+for _ in 0..5 {
+    engine.show_toast(
+        ToastBuilder::new("git: SUCCESS".into())
+            .toast_type(ToastType::Success)
+            .duration(Duration::from_secs(5)),
+    );
+}"#,
+        build: || {
+            vec![
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+            ]
+        },
+        update_after_secs: None,
+        update_builder: None,
+    },
 ];
 
 // ---------------------------------------------------------------------------
