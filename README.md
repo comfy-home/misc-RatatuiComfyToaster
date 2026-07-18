@@ -475,6 +475,48 @@ Expand the section below to see API reference tables...
 | `keep_on(1)` | Make sticky (no auto-dismiss) |
 | `constraint(c)` | Set size constraints |
 
+### Toast Update Builder
+
+`ToastUpdate` is a builder for in-place updates to an existing queued toast. Every field is optional — only the fields you set are applied. Use with `update_toast_by_id(id, update)`.
+
+| Method | Description |
+|--------|-------------|
+| `new()` | Create an empty update (no-op when applied) |
+| `message(msg)` | Replace the toast message body |
+| `toast_type(type)` | Replace the toast type (e.g. `Info` → `Success` or `Error`) |
+| `title(opt)` | Replace the title (`None` removes it) |
+| `duration(opt)` | Set new duration and reset expiry (`None` makes it sticky) |
+| `keep_on(bool)` | Change sticky/timed mode |
+| `show_progress_bar(bool)` | Show or hide the progress bar |
+| `progress_bar_style(style)` | Change progress bar visual style |
+| `border_mode(mode)` | Change border mode |
+| `toast_bg(color)` | Change background color |
+| `position(pos)` | Change screen position |
+| `offset(x, y)` | Change offset from anchor position |
+| `constraint(c)` | Change size constraint |
+
+#### Example: Info → Success with new expiry
+
+```rust
+let id = engine.show_toast_with_id(
+    ToastBuilder::new("command: running...".into())
+        .toast_type(ToastType::Info)
+        .duration(Duration::from_secs(20)) // 20 seconds to reflect command's timeout
+        .show_progress_bar(true),
+);
+
+// ... git command completes ...
+
+engine.update_toast_by_id(
+    id,
+    ToastUpdate::new()
+        .toast_type(ToastType::Success)
+        .message("command: SUCCESS")
+        .duration(Some(Duration::from_secs(2)))
+        .show_progress_bar(false),
+);
+```
+
 ### Engine Builder Methods
 
 | Method | Description |
@@ -490,8 +532,10 @@ Expand the section below to see API reference tables...
 | Method | Description |
 |--------|-------------|
 | `show_toast(builder)` | Enqueue a toast |
+| `show_toast_with_id(builder)` | Enqueue a toast, returns its unique `u64` ID |
 | `hide_toast()` / `dismiss()` | Dismiss front toast and advance queue |
 | `hide_toast_by_id(id)` | Dismiss a specific toast by its unique ID (tokio feature) |
+| `update_toast_by_id(id, update)` | Update a queued toast in-place by ID. See [`ToastUpdate`](#toast-update-builder) |
 | `has_toast()` | Check if any toast is queued |
 | `queue_len()` | Number of toasts currently queued |
 | `is_keep_on()` | Check if front toast is sticky |
