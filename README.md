@@ -16,9 +16,49 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 ### ✨ Release Notes
 
-<details><summary>👀 What's new in v0.5.3 ...</summary>
+<details><summary>👀 What's new in v0.6.2 ...</summary>
 
 ### 💥 💥 💥 This Release's Top Picks ...  💥 💥 💥
+
+<sup>💬 Intro:</sup>  
+<sup>_This release brings a huge functional bump. We are very excited to share it with you..._</sup>  
+
+#### **1. &nbsp;&nbsp;&nbsp;**(Big Enhancement)** `ToastUpdate` builder**
+- `show_toast` now returns `u64` -> each toast gets a unique ID that callers can use for later updates
+- in practice it means that your toasts now can react, for example:
+  - you have an info toast "command in progress..."
+  - depending on the command's output you can update this toast to a success toast, or error toast by one simple call.
+- we did not want to introduce breaking change, so instead of changing the existing `show_toast()` caller we added a new one `show_toast_with_id` which returns `u64`. Those toasts that you want to use this feature with **MUST** call `show_toast_with_id`
+- dedup logic implemented
+- feature is well documented below
+- added a simple example into `demo.rs`
+
+#### **2. &nbsp;&nbsp;&nbsp;**(Enhancement)** Dedup Counter**
+- enabled by default.
+- can be disabled, see documentation below
+- added into DEMO example
+
+#### **3. &nbsp;&nbsp;&nbsp;**(Enhacement)** `toast_areas`**
+- New `ToastEngine::toast_areas()` returns the `Rect` area of every queued toast (front-to-back order)
+- complements the existing `toast_area()` which only returns the front toast's area
+- Useful when rendering multiple stacked toasts simultaneously
+  - e.g., a CLI overlay that needs to write each toast's region individually without wiping terminal content between toasts
+
+#### **4. &nbsp;&nbsp;&nbsp;**(Enhancement)** `contrasting_fg` no longer returns hardcoded white**
+- **Before:** Highlighted toast titles always used white text on the type-colored background. White-on-yellow (Warning) and white-on-green (Success) had poor readability.
+- **After:** Text color is now computed using WCAG relative luminance — bright backgrounds (yellow, green) get black text, dark backgrounds (blue, red) get white text.
+
+#### **5. &nbsp;&nbsp;&nbsp;(New API) `ToastEngine::set_default_progress_bar_style()`**
+- Runtime setter to change the default progress bar style for newly enqueued toasts without rebuilding the engine.
+
+
+<sub>...  🎉 Enjoy!</sub>
+
+<br><br>
+
+<details><summary>👀 See previous changes...</summary>
+<br>
+<details><summary>v0-5-3 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;(**Enhancement**) Tokio integration**
 - New: `ToastMessage::ShowBuilder` variant for full toast configuration through the event loop
@@ -44,10 +84,8 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <sub>...  🎉 Enjoy!</sub>
 
-<br><br>
-
-<details><summary>👀 See previous changes...</summary>
 <br>
+</details>
 <details><summary>v0-5-2 ...</summary>
 
 #### **1. &nbsp;&nbsp;&nbsp;(Bugfix) Tokio `Hide` dismisses wrong toast**
@@ -98,31 +136,16 @@ An advanced toast notification engine for [Ratatui](https://ratatui.rs/) termina
 
 <br>
 </details>
-<details><summary>v0-4-0 ...</summary>
-
-#### **1. &nbsp;&nbsp;&nbsp;Add a TITLE to your toasts!**
-- Learn more about this feature [HERE](#%EF%B8%8F-optional-title-line)
-- You can set them up with your own config, or use...
-
-#### **2. &nbsp;&nbsp;&nbsp;Toast title PRESETS!**
-- See details in documentation sections:
-    - [Configuration options](#%EF%B8%8F-toast-title-presets)
-    - [Examples](#toast-titile-preset-examples)
-
-
-<sub>...  🎉 Enjoy!</sub>
-
-<br>
-</details>
 </details>
 <br>
 
 ---
-<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.5.3)</sup>
+<sup>... ✨ auto-injected by [ComfyGit](https://github.com/comfy-home/ComfyGit)       |       For detailed changelog [CLICK HERE](https://gitlab.com/comfyhome/crates/ratatui-comfy-toaster/-/releases/v0.6.2)</sup>
 
 ---
 
 </details>
+
 
 
 
