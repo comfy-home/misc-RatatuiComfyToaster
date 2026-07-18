@@ -390,9 +390,9 @@ vec![
     },
     ToastDemo {
         name: "★ Live Update: Info → Success",
-        description: "Shows an info toast with progress bar, then after 3s updates it to success with 2s expiry.",
+        description: "Shows an info toast with progress bar, then after 5s updates it to success with 2s expiry.",
         code: r#"// 1. Show info toast with 20s timeout + progress bar
-let id = engine.show_toast(
+let id = engine.show_toast_with_id(
     ToastBuilder::new("command: running...".into())
         .toast_type(ToastType::Info)
         .duration(Duration::from_secs(20))
@@ -475,7 +475,7 @@ impl App {
         let builders = (demo.build)();
         let mut last_id = None;
         for builder in builders {
-            last_id = Some(self.engine.show_toast(builder));
+            last_id = Some(self.engine.show_toast_with_id(builder));
         }
         if let (Some(id), Some(secs), Some(update_fn)) =
             (last_id, demo.update_after_secs, demo.update_builder)
