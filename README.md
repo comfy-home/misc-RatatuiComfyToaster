@@ -378,6 +378,32 @@ let mut engine = ToastEngineBuilder::new(area)
 engine.set_dedup(false);
 ```
 
+#### Dedup Counter
+
+When dedup absorbs a duplicate, the surviving toast's message is prefixed with a counter showing how many duplicates were consolidated. For example, if 5 identical "git: SUCCESS" toasts are shown, only one remains, displaying as `[4x] git: SUCCESS` (the first toast is the original, 4 were deduped).
+
+The counter is **enabled by default**. You can disable it globally or per-toast:
+
+```rust
+use ratatui_comfy_toaster::{ToastEngineBuilder, ToastBuilder};
+
+// Disable globally at build time:
+let mut engine = ToastEngineBuilder::new(area)
+    .dedup_count(false)
+    .build();
+
+// Or toggle at runtime:
+engine.set_dedup_count(false);
+
+// Or disable for a single toast:
+engine.show_toast(
+    ToastBuilder::new("git: SUCCESS".into())
+        .show_dedup_count(false),
+);
+```
+
+When disabled, the counter is still tracked internally but the `[Nx]` prefix is not displayed.
+
 ### 📬 Toast Queue
 
 Toasts are now queued rather than overwritten. Multiple messages can be pending at once:
@@ -473,6 +499,7 @@ Expand the section below to see API reference tables...
 | `placement(p)` | Set position + offset together |
 | `duration(d)` | Set display duration |
 | `keep_on(1)` | Make sticky (no auto-dismiss) |
+| `show_dedup_count(bool)` | Override dedup counter for this toast (default: engine setting) |
 | `constraint(c)` | Set size constraints |
 
 ### Toast Update Builder
@@ -525,6 +552,7 @@ engine.update_toast_by_id(
 | `default_duration(d)` | Set default toast duration (default: 3s) |
 | `max_queue_depth(n)` | Set max queued toasts (default: 4, min: 1) |
 | `dedup(bool)` | Enable/disable toast deduplication (default: true) |
+| `dedup_count(bool)` | Enable/disable dedup counter prefix `[Nx]` (default: true) |
 | `action_tx(tx)` | Set tokio channel sender *(tokio feature only)* |
 
 ### Engine Methods
@@ -544,6 +572,7 @@ engine.update_toast_by_id(
 | `handle_click(col, row, button)` | Handle mouse click |
 | `handle_shortcut(shortcut)` | Handle keyboard shortcut |
 | `set_dedup(bool)` | Enable/disable deduplication at runtime |
+| `set_dedup_count(bool)` | Enable/disable dedup counter prefix at runtime |
 | `set_default_progress_bar_style(style)` | Change default progress bar style at runtime |
 | `set_area(rect)` | Update display area |
 | `set_area_avoiding(rect, occupied)` | Update area with overlap avoidance |
