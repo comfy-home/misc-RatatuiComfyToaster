@@ -92,6 +92,7 @@ where
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
     dedup_enabled: bool,
+    dedup_count_enabled: bool,
     next_id: u64,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
@@ -112,6 +113,7 @@ where
     default_progress_bar_style: ToastProgressBarStyle,
     max_queue_depth: usize,
     dedup_enabled: bool,
+    dedup_count_enabled: bool,
     #[cfg(feature = "tokio")]
     tx: Option<tokio::sync::mpsc::Sender<A>>,
     #[cfg(not(feature = "tokio"))]
@@ -132,6 +134,7 @@ where
             default_progress_bar_style: ToastProgressBarStyle::FullBlock,
             max_queue_depth: 4,
             dedup_enabled: true,
+            dedup_count_enabled: true,
             tx: None,
         }
     }
@@ -152,6 +155,15 @@ where
     ///   Pass `false` to disable deduplication and allow duplicate toasts.
     pub fn dedup(mut self, enabled: bool) -> Self {
         self.dedup_enabled = enabled;
+        self
+    }
+
+    /// Enables or disables the dedup counter prefix (e.g. `[7x]`) on deduplicated toasts.
+    /// When enabled (the default), a toast that absorbs duplicates via dedup will display
+    /// `[Nx] ` before its message, where N is the number of duplicates absorbed.
+    /// Individual toasts can override this via [`ToastBuilder::show_dedup_count`].
+    pub fn dedup_count(mut self, enabled: bool) -> Self {
+        self.dedup_count_enabled = enabled;
         self
     }
 
@@ -287,6 +299,7 @@ pub struct ToastBuilder {
     border_mode: Option<ToastBorderMode>,
     show_progress_bar: Option<bool>,
     progress_bar_style: Option<ToastProgressBarStyle>,
+    show_dedup_count: Option<bool>,
 }
 
 #[derive(Debug, Clone)]
@@ -306,6 +319,8 @@ struct ActiveToast {
     progress_bar_style: ToastProgressBarStyle,
     expires_at: Option<Instant>,
     area: Rect,
+    dedup_count: u32,
+    show_dedup_count: bool,
 }
 
 impl<A> ToastEngine<A>
@@ -322,6 +337,7 @@ where
             default_progress_bar_style,
             max_queue_depth,
             dedup_enabled,
+            dedup_count_enabled,
             next_id,
             tx,
             ..
@@ -335,6 +351,7 @@ where
             default_progress_bar_style,
             max_queue_depth,
             dedup_enabled,
+            dedup_count_enabled,
             next_id,
             tx,
             queue: VecDeque::new(),
@@ -351,6 +368,7 @@ where
             default_progress_bar_style,
             max_queue_depth,
             dedup_enabled,
+            dedup_count_enabled,
             tx,
             ..
         }: ToastEngineBuilder<A>,
@@ -363,6 +381,7 @@ where
             default_progress_bar_style,
             max_queue_depth,
             dedup_enabled,
+            dedup_count_enabled,
             next_id: 0,
             tx,
             queue: VecDeque::new(),
@@ -382,6 +401,13 @@ where
     ///   as a temporary +1 beyond `max_queue_depth` and auto-expires normally. Sticky toasts are
     ///   never displaced by timed toasts.
     pub fn show_toast(&mut self, toast: ToastBuilder) {
+        let _ = self.show_toast_with_id(toast);
+    }
+
+    /// Enqueue a toast and return its unique `u64` ID.
+    /// The ID can be used with [`update_toast_by_id`](Self::update_toast_by_id)
+    /// or [`hide_toast_by_id`](Self::hide_toast_by_id).
+    pub fn show_toast_with_id(&mut self, toast: ToastBuilder) -> u64 {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
 
@@ -404,7 +430,23 @@ where
                     if !existing.keep_on {
                         existing.expires_at = Some(Instant::now() + duration);
                     }
-                    return;
+                    existing.dedup_count += 1;
+                    existing.toast.message = dedup_display_message(
+                        &existing.message,
+                        existing.dedup_count,
+                        existing.show_dedup_count,
+                    );
+                    existing.area = calculate_toast_area_with_layout(ToastLayoutParams {
+                        title: existing.title.as_ref(),
+                        message: &existing.toast.message,
+                        position: existing.position,
+                        constraint: &existing.constraint,
+                        offset: existing.offset,
+                        area: self.area,
+                        border_mode: existing.border_mode,
+                        show_progress_bar: existing.show_progress_bar,
+                    });
+                    return existing.id;
                 }
             }
         }
@@ -429,12 +471,14 @@ where
         let title = toast.title.clone().filter(|title| !title.is_empty());
         let message = toast.message.into_owned();
         let copy_text = toast_copy_text(title.as_ref(), &message);
+        let show_dedup_count = toast.show_dedup_count.unwrap_or(self.dedup_count_enabled);
+        let display_msg = dedup_display_message(&message, 0, show_dedup_count);
         let id = self.next_id;
         self.next_id += 1;
         self.queue.push_back(ActiveToast {
             id,
             toast: Toast::new(
-                &message,
+                &display_msg,
                 toast.toast_type,
                 toast.toast_bg,
                 border_mode,
@@ -458,6 +502,8 @@ where
                 Some(Instant::now() + duration)
             },
             area,
+            dedup_count: 0,
+            show_dedup_count,
         });
 
         #[cfg(feature = "tokio")]
@@ -470,6 +516,8 @@ where
                 });
             }
         }
+
+        id
     }
 
     /// Get the area where the toast will be rendered.
@@ -478,6 +526,11 @@ where
             .front()
             .map(|toast| toast.area)
             .unwrap_or_default()
+    }
+
+    /// Get the areas of all queued toasts (front-to-back order).
+    pub fn toast_areas(&self) -> Vec<Rect> {
+        self.queue.iter().map(|toast| toast.area).collect()
     }
 
     /// Whether a toast is currently being displayed.
@@ -593,12 +646,200 @@ where
         }
     }
 
+    /// Updates a queued toast in-place by its ID.
+    ///
+    /// Only the fields set on the [`ToastUpdate`] builder are applied; all other
+    /// fields remain unchanged. When `duration` or `keep_on` is changed, the
+    /// expiry timer is reset accordingly. The toast area is recalculated if any
+    /// layout-affecting field (message, title, position, constraint, offset,
+    /// border mode, progress bar visibility) is updated.
+    ///
+    /// Returns `true` if the toast was found and updated, `false` otherwise.
+    pub fn update_toast_by_id(&mut self, id: u64, update: ToastUpdate) -> bool {
+        let Some(idx) = self.queue.iter().position(|t| t.id == id) else {
+            return false;
+        };
+
+        let toast = &mut self.queue[idx];
+        let mut needs_recalc = false;
+
+        if let Some(msg) = update.message {
+            let msg = msg.into_owned();
+            toast.message = msg.clone();
+            toast.toast.message =
+                dedup_display_message(&msg, toast.dedup_count, toast.show_dedup_count);
+            toast.copy_text = toast_copy_text(toast.title.as_ref(), &toast.message);
+            needs_recalc = true;
+        }
+
+        if let Some(toast_type) = update.toast_type {
+            toast.toast.type_ = toast_type;
+        }
+
+        if let Some(title) = update.title {
+            let title = title.filter(|t| !t.is_empty());
+            toast.title = title.clone();
+            toast.toast = toast.toast.clone().with_title(title);
+            toast.copy_text = toast_copy_text(toast.title.as_ref(), &toast.message);
+            needs_recalc = true;
+        }
+
+        if let Some(bg) = update.toast_bg {
+            toast.toast.bg = bg;
+        }
+
+        if let Some(mode) = update.border_mode {
+            toast.border_mode = mode;
+            toast.toast.border_mode = mode;
+            needs_recalc = true;
+        }
+
+        if let Some(style) = update.progress_bar_style {
+            toast.progress_bar_style = style;
+            toast.toast.progress_bar_style = style;
+        }
+
+        if let Some(position) = update.position {
+            toast.position = position;
+            needs_recalc = true;
+        }
+
+        if let Some(offset) = update.offset {
+            toast.offset = offset;
+            needs_recalc = true;
+        }
+
+        if let Some(constraint) = update.constraint {
+            toast.constraint = constraint;
+            needs_recalc = true;
+        }
+
+        // Handle keep_on / duration / expiry changes
+        if let Some(keep_on) = update.keep_on {
+            toast.keep_on = keep_on;
+            if keep_on {
+                toast.duration = None;
+                toast.expires_at = None;
+                toast.show_progress_bar = false;
+            }
+            needs_recalc = true;
+        }
+
+        if let Some(duration_opt) = update.duration {
+            match duration_opt {
+                Some(duration) => {
+                    toast.duration = Some(duration);
+                    toast.expires_at = Some(Instant::now() + duration);
+                    if !toast.keep_on {
+                        toast.show_progress_bar =
+                            update.show_progress_bar.unwrap_or(toast.show_progress_bar);
+                    }
+                }
+                None => {
+                    toast.duration = None;
+                    toast.expires_at = None;
+                    toast.keep_on = true;
+                    toast.show_progress_bar = false;
+                }
+            }
+            needs_recalc = true;
+        } else if update.keep_on.is_none()
+            && let Some(show) = update.show_progress_bar
+        {
+            toast.show_progress_bar = show && !toast.keep_on;
+            needs_recalc = true;
+        }
+
+        if needs_recalc {
+            toast.area = calculate_toast_area_with_layout(ToastLayoutParams {
+                title: toast.title.as_ref(),
+                message: &toast.toast.message,
+                position: toast.position,
+                constraint: &toast.constraint,
+                offset: toast.offset,
+                area: self.area,
+                border_mode: toast.border_mode,
+                show_progress_bar: toast.show_progress_bar,
+            });
+        }
+
+        // Post-update dedup: if another toast in the queue now matches
+        // (same message + type + title), remove the updated toast and
+        // refresh the other's expiry instead of showing duplicates.
+        if self.dedup_enabled {
+            let updated_msg = toast.message.clone();
+            let updated_type = toast.toast.type_;
+            let updated_title = toast.title.as_ref().map(|t| t.text.as_str().to_string());
+            let updated_expires_at = toast.expires_at;
+            let updated_duration = toast.duration;
+
+            let mut duplicate_pos = None;
+            for (i, other) in self.queue.iter().enumerate() {
+                if other.id == id {
+                    continue;
+                }
+                let other_title = other.title.as_ref().map(|t| t.text.as_str());
+                if other_title == updated_title.as_deref()
+                    && other.toast.type_ == updated_type
+                    && other.message == updated_msg
+                {
+                    duplicate_pos = Some(i);
+                    break;
+                }
+            }
+
+            if let Some(pos) = duplicate_pos
+                && let Some(other) = self.queue.get_mut(pos)
+            {
+                if !other.keep_on {
+                    if let Some(duration) = updated_duration {
+                        other.expires_at = Some(Instant::now() + duration);
+                    } else if let Some(expires_at) = updated_expires_at {
+                        other.expires_at = Some(expires_at);
+                    }
+                }
+                other.dedup_count += 1;
+                other.toast.message = dedup_display_message(
+                    &other.message,
+                    other.dedup_count,
+                    other.show_dedup_count,
+                );
+                other.area = calculate_toast_area_with_layout(ToastLayoutParams {
+                    title: other.title.as_ref(),
+                    message: &other.toast.message,
+                    position: other.position,
+                    constraint: &other.constraint,
+                    offset: other.offset,
+                    area: self.area,
+                    border_mode: other.border_mode,
+                    show_progress_bar: other.show_progress_bar,
+                });
+            }
+
+            if duplicate_pos.is_some() {
+                // Remove the updated toast (it's now redundant).
+                if let Some(pos) = self.queue.iter().position(|t| t.id == id) {
+                    self.queue.remove(pos);
+                }
+            }
+        }
+
+        true
+    }
+
     /// Enables or disables toast deduplication at runtime. Dedup is enabled by default. When enabled,
     /// incoming toasts with the same `message` + `toast_type` + `title` as an existing queued toast
     /// are not duplicated: timed duplicates refresh the existing toast's expiry timer, sticky
     /// duplicates are skipped. Pass `false` to allow duplicates.
     pub fn set_dedup(&mut self, enabled: bool) {
         self.dedup_enabled = enabled;
+    }
+
+    /// Enables or disables the dedup counter prefix at runtime. When enabled (the default),
+    /// deduplicated toasts display `[Nx] ` before their message. Existing queued toasts
+    /// that were deduplicated before this call are not retroactively updated.
+    pub fn set_dedup_count(&mut self, enabled: bool) {
+        self.dedup_count_enabled = enabled;
     }
 
     /// Sets the default progress bar style for newly enqueued timed toasts.
@@ -619,7 +860,7 @@ where
         for toast in self.queue.iter_mut() {
             let desired_area = calculate_toast_area_with_layout(ToastLayoutParams {
                 title: toast.title.as_ref(),
-                message: &toast.message,
+                message: &toast.toast.message,
                 position: toast.position,
                 constraint: &toast.constraint,
                 offset: toast.offset,
@@ -729,6 +970,7 @@ impl ToastBuilder {
             border_mode: None,
             show_progress_bar: None,
             progress_bar_style: None,
+            show_dedup_count: None,
         }
     }
 
@@ -764,6 +1006,13 @@ impl ToastBuilder {
         if let Some(title) = &mut self.title {
             title.style = ToastTitleStyle::Highlight;
         }
+        self
+    }
+
+    /// Show or hide the dedup counter prefix (e.g. `[7x]`) on this toast.
+    /// When `None` (the default), the engine's global setting is used.
+    pub fn show_dedup_count(mut self, show: bool) -> Self {
+        self.show_dedup_count = Some(show);
         self
     }
 
@@ -832,6 +1081,117 @@ impl ToastBuilder {
         self.position = placement.position;
         self.offset = placement.offset;
         self
+    }
+}
+
+/// A builder for in-place updates to an existing toast.
+///
+/// Every field is optional — only the fields you set are applied. Use this
+/// with [`ToastEngine::update_toast_by_id`] to mutate a queued toast without
+/// dismissing and re-enqueuing it.
+#[derive(Debug, Default, Clone)]
+pub struct ToastUpdate {
+    message: Option<Cow<'static, str>>,
+    toast_type: Option<ToastType>,
+    title: Option<Option<ToastTitle>>,
+    duration: Option<Option<Duration>>,
+    keep_on: Option<bool>,
+    show_progress_bar: Option<bool>,
+    progress_bar_style: Option<ToastProgressBarStyle>,
+    border_mode: Option<ToastBorderMode>,
+    toast_bg: Option<Color>,
+    position: Option<ToastPosition>,
+    offset: Option<(i16, i16)>,
+    constraint: Option<ToastConstraint>,
+}
+
+impl ToastUpdate {
+    /// Create a new empty `ToastUpdate` (no fields set — no-op when applied).
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Replace the toast message body.
+    pub fn message(mut self, message: impl Into<Cow<'static, str>>) -> Self {
+        self.message = Some(message.into());
+        self
+    }
+
+    /// Replace the toast type (e.g. `Info` → `Success` or `Error`).
+    pub fn toast_type(mut self, toast_type: ToastType) -> Self {
+        self.toast_type = Some(toast_type);
+        self
+    }
+
+    /// Replace the title. Pass `None` to remove the title.
+    pub fn title(mut self, title: Option<ToastTitle>) -> Self {
+        self.title = Some(title);
+        self
+    }
+
+    /// Set a new duration and reset the expiry timer.
+    /// Pass `None` to make the toast sticky (never auto-expires).
+    pub fn duration(mut self, duration: Option<Duration>) -> Self {
+        self.duration = Some(duration);
+        self
+    }
+
+    /// Change whether the toast is sticky (`true`) or timed (`false`).
+    pub fn keep_on(mut self, keep_on: bool) -> Self {
+        self.keep_on = Some(keep_on);
+        self
+    }
+
+    /// Show or hide the progress bar.
+    pub fn show_progress_bar(mut self, show: bool) -> Self {
+        self.show_progress_bar = Some(show);
+        self
+    }
+
+    /// Change the progress bar visual style.
+    pub fn progress_bar_style(mut self, style: ToastProgressBarStyle) -> Self {
+        self.progress_bar_style = Some(style);
+        self
+    }
+
+    /// Change the border mode.
+    pub fn border_mode(mut self, mode: ToastBorderMode) -> Self {
+        self.border_mode = Some(mode);
+        self
+    }
+
+    /// Change the background color.
+    pub fn toast_bg(mut self, bg: Color) -> Self {
+        self.toast_bg = Some(bg);
+        self
+    }
+
+    /// Change the screen position.
+    pub fn position(mut self, position: ToastPosition) -> Self {
+        self.position = Some(position);
+        self
+    }
+
+    /// Change the offset from the anchor position.
+    pub fn offset(mut self, x: i16, y: i16) -> Self {
+        self.offset = Some((x, y));
+        self
+    }
+
+    /// Change the size constraint.
+    pub fn constraint(mut self, constraint: ToastConstraint) -> Self {
+        self.constraint = Some(constraint);
+        self
+    }
+}
+
+/// Formats the displayed toast message with an optional dedup count prefix.
+/// When `show` is true and `count` > 0, the message is prefixed with `[Nx] `.
+fn dedup_display_message(message: &str, count: u32, show: bool) -> String {
+    if show && count > 0 {
+        format!("[{}x] {}", count, message)
+    } else {
+        message.to_string()
     }
 }
 
@@ -1453,5 +1813,217 @@ mod tests {
             2,
             "dedup should be off after set_dedup(false)"
         );
+    }
+
+    #[test]
+    fn show_toast_returns_unique_id() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id1 = engine.show_toast_with_id(ToastBuilder::new("first".into()));
+        let id2 = engine.show_toast_with_id(ToastBuilder::new("second".into()));
+        assert_ne!(id1, id2, "each toast should get a unique ID");
+    }
+
+    #[test]
+    fn update_toast_changes_type_and_message() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id = engine.show_toast_with_id(
+            ToastBuilder::new("git: running...".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20))
+                .show_progress_bar(true),
+        );
+
+        let found = engine.update_toast_by_id(
+            id,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+        assert!(found, "toast should be found");
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.toast.type_, ToastType::Success);
+        assert_eq!(toast.message, "git: SUCCESS");
+        assert_eq!(toast.duration, Some(Duration::from_secs(2)));
+    }
+
+    #[test]
+    fn update_toast_resets_expiry_on_duration_change() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id = engine.show_toast_with_id(
+            ToastBuilder::new("working".into()).duration(Duration::from_secs(5)),
+        );
+        let first_expiry = engine.queue.front().unwrap().expires_at.unwrap();
+
+        std::thread::sleep(Duration::from_millis(50));
+
+        engine.update_toast_by_id(
+            id,
+            ToastUpdate::new().duration(Some(Duration::from_secs(10))),
+        );
+
+        let refreshed_expiry = engine.queue.front().unwrap().expires_at.unwrap();
+        assert!(
+            refreshed_expiry > first_expiry,
+            "expiry should be reset to now + new duration"
+        );
+    }
+
+    #[test]
+    fn update_toast_to_error_type() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id = engine.show_toast_with_id(
+            ToastBuilder::new("git: running...".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+
+        engine.update_toast_by_id(
+            id,
+            ToastUpdate::new()
+                .toast_type(ToastType::Error)
+                .message("git: FAILED")
+                .keep_on(true),
+        );
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.toast.type_, ToastType::Error);
+        assert_eq!(toast.message, "git: FAILED");
+        assert!(toast.keep_on);
+        assert!(toast.expires_at.is_none(), "sticky toast should not expire");
+    }
+
+    #[test]
+    fn update_toast_returns_false_for_unknown_id() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let result = engine.update_toast_by_id(999, ToastUpdate::new().message("nope"));
+        assert!(!result, "should return false for unknown ID");
+    }
+
+    #[test]
+    fn update_toast_noop_when_empty() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id = engine.show_toast_with_id(ToastBuilder::new("msg".into()));
+
+        engine.update_toast_by_id(id, ToastUpdate::new());
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.message, "msg", "empty update should be a no-op");
+        assert_eq!(toast.toast.type_, ToastType::Info);
+    }
+
+    #[test]
+    fn update_dedup_consolidates_duplicate_after_update() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+
+        // Two git commands with different args → two separate toasts
+        let id1 = engine.show_toast_with_id(
+            ToastBuilder::new("git log".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+        let id2 = engine.show_toast_with_id(
+            ToastBuilder::new("git tag".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+        assert_eq!(engine.queue_len(), 2);
+
+        // Both finish successfully → both updated to "git: SUCCESS"
+        engine.update_toast_by_id(
+            id1,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+        engine.update_toast_by_id(
+            id2,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+
+        // Dedup should have consolidated → only 1 toast remains
+        assert_eq!(
+            engine.queue_len(),
+            1,
+            "duplicate toasts after update should be consolidated"
+        );
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.message, "git: SUCCESS");
+        assert_eq!(toast.toast.type_, ToastType::Success);
+    }
+
+    #[test]
+    fn dedup_counter_increments_on_show() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        engine.show_toast(ToastBuilder::new("msg".into()));
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.dedup_count, 2);
+        assert_eq!(toast.toast.message, "[2x] msg");
+    }
+
+    #[test]
+    fn dedup_counter_increments_on_update_consolidation() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let id1 = engine.show_toast_with_id(
+            ToastBuilder::new("git log".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+        let id2 = engine.show_toast_with_id(
+            ToastBuilder::new("git tag".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+
+        engine.update_toast_by_id(
+            id1,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+        engine.update_toast_by_id(
+            id2,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.dedup_count, 1);
+        assert_eq!(toast.toast.message, "[1x] git: SUCCESS");
+    }
+
+    #[test]
+    fn dedup_counter_disabled_globally() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25))
+            .dedup_count(false)
+            .build();
+        engine.show_toast(ToastBuilder::new("msg".into()));
+        engine.show_toast(ToastBuilder::new("msg".into()));
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.dedup_count, 1);
+        assert_eq!(toast.toast.message, "msg");
+    }
+
+    #[test]
+    fn dedup_counter_disabled_per_toast() {
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        engine.show_toast(ToastBuilder::new("msg".into()).show_dedup_count(false));
+        engine.show_toast(ToastBuilder::new("msg".into()).show_dedup_count(false));
+
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.dedup_count, 1);
+        assert_eq!(toast.toast.message, "msg");
     }
 }

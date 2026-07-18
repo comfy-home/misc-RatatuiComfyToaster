@@ -378,6 +378,32 @@ let mut engine = ToastEngineBuilder::new(area)
 engine.set_dedup(false);
 ```
 
+#### Dedup Counter
+
+When dedup absorbs a duplicate, the surviving toast's message is prefixed with a counter showing how many duplicates were consolidated. For example, if 5 identical "git: SUCCESS" toasts are shown, only one remains, displaying as `[4x] git: SUCCESS` (the first toast is the original, 4 were deduped).
+
+The counter is **enabled by default**. You can disable it globally or per-toast:
+
+```rust
+use ratatui_comfy_toaster::{ToastEngineBuilder, ToastBuilder};
+
+// Disable globally at build time:
+let mut engine = ToastEngineBuilder::new(area)
+    .dedup_count(false)
+    .build();
+
+// Or toggle at runtime:
+engine.set_dedup_count(false);
+
+// Or disable for a single toast:
+engine.show_toast(
+    ToastBuilder::new("git: SUCCESS".into())
+        .show_dedup_count(false),
+);
+```
+
+When disabled, the counter is still tracked internally but the `[Nx]` prefix is not displayed.
+
 ### 📬 Toast Queue
 
 Toasts are now queued rather than overwritten. Multiple messages can be pending at once:
@@ -473,7 +499,50 @@ Expand the section below to see API reference tables...
 | `placement(p)` | Set position + offset together |
 | `duration(d)` | Set display duration |
 | `keep_on(1)` | Make sticky (no auto-dismiss) |
+| `show_dedup_count(bool)` | Override dedup counter for this toast (default: engine setting) |
 | `constraint(c)` | Set size constraints |
+
+### Toast Update Builder
+
+`ToastUpdate` is a builder for in-place updates to an existing queued toast. Every field is optional — only the fields you set are applied. Use with `update_toast_by_id(id, update)`.
+
+| Method | Description |
+|--------|-------------|
+| `new()` | Create an empty update (no-op when applied) |
+| `message(msg)` | Replace the toast message body |
+| `toast_type(type)` | Replace the toast type (e.g. `Info` → `Success` or `Error`) |
+| `title(opt)` | Replace the title (`None` removes it) |
+| `duration(opt)` | Set new duration and reset expiry (`None` makes it sticky) |
+| `keep_on(bool)` | Change sticky/timed mode |
+| `show_progress_bar(bool)` | Show or hide the progress bar |
+| `progress_bar_style(style)` | Change progress bar visual style |
+| `border_mode(mode)` | Change border mode |
+| `toast_bg(color)` | Change background color |
+| `position(pos)` | Change screen position |
+| `offset(x, y)` | Change offset from anchor position |
+| `constraint(c)` | Change size constraint |
+
+#### Example: Info → Success with new expiry
+
+```rust
+let id = engine.show_toast_with_id(
+    ToastBuilder::new("command: running...".into())
+        .toast_type(ToastType::Info)
+        .duration(Duration::from_secs(20)) // 20 seconds to reflect command's timeout
+        .show_progress_bar(true),
+);
+
+// ... git command completes ...
+
+engine.update_toast_by_id(
+    id,
+    ToastUpdate::new()
+        .toast_type(ToastType::Success)
+        .message("command: SUCCESS")
+        .duration(Some(Duration::from_secs(2)))
+        .show_progress_bar(false),
+);
+```
 
 ### Engine Builder Methods
 
@@ -483,27 +552,32 @@ Expand the section below to see API reference tables...
 | `default_duration(d)` | Set default toast duration (default: 3s) |
 | `max_queue_depth(n)` | Set max queued toasts (default: 4, min: 1) |
 | `dedup(bool)` | Enable/disable toast deduplication (default: true) |
+| `dedup_count(bool)` | Enable/disable dedup counter prefix `[Nx]` (default: true) |
 | `action_tx(tx)` | Set tokio channel sender *(tokio feature only)* |
 
 ### Engine Methods
 
-| Method | Description |
-|--------|-------------|
-| `show_toast(builder)` | Enqueue a toast |
-| `hide_toast()` / `dismiss()` | Dismiss front toast and advance queue |
-| `hide_toast_by_id(id)` | Dismiss a specific toast by its unique ID (tokio feature) |
-| `has_toast()` | Check if any toast is queued |
-| `queue_len()` | Number of toasts currently queued |
-| `is_keep_on()` | Check if front toast is sticky |
-| `toast_area()` | Get front toast rectangle |
-| `contains(col, row)` | Check if point is inside front toast |
-| `handle_click(col, row, button)` | Handle mouse click |
-| `handle_shortcut(shortcut)` | Handle keyboard shortcut |
-| `set_dedup(bool)` | Enable/disable deduplication at runtime |
-| `set_default_progress_bar_style(style)` | Change default progress bar style at runtime |
-| `set_area(rect)` | Update display area |
-| `set_area_avoiding(rect, occupied)` | Update area with overlap avoidance |
-| `tick()` | Advance queue if front toast has expired |
+| Method                                  | Description                                                                      |
+| -----------------------------------------| ----------------------------------------------------------------------------------|
+| `show_toast(builder)`                   | Enqueue a toast                                                                  |
+| `show_toast_with_id(builder)`           | Enqueue a toast, returns its unique `u64` ID                                     |
+| `hide_toast()` / `dismiss()`            | Dismiss front toast and advance queue                                            |
+| `hide_toast_by_id(id)`                  | Dismiss a specific toast by its unique ID (tokio feature)                        |
+| `update_toast_by_id(id, update)`        | Update a queued toast in-place by ID. See [`ToastUpdate`](#toast-update-builder) |
+| `has_toast()`                           | Check if any toast is queued                                                     |
+| `queue_len()`                           | Number of toasts currently queued                                                |
+| `is_keep_on()`                          | Check if front toast is sticky                                                   |
+| `toast_area()`                          | Get front toast rectangle                                                        |
+| `toast_areas()`                         | Get all queued toast rectangles (front-to-back)                                  |
+| `contains(col, row)`                    | Check if point is inside front toast                                             |
+| `handle_click(col, row, button)`        | Handle mouse click                                                               |
+| `handle_shortcut(shortcut)`             | Handle keyboard shortcut                                                         |
+| `set_dedup(bool)`                       | Enable/disable deduplication at runtime                                          |
+| `set_dedup_count(bool)`                 | Enable/disable dedup counter prefix at runtime                                   |
+| `set_default_progress_bar_style(style)` | Change default progress bar style at runtime                                     |
+| `set_area(rect)`                        | Update display area                                                              |
+| `set_area_avoiding(rect, occupied)`     | Update area with overlap avoidance                                               |
+| `tick()`                                | Advance queue if front toast has expired                                         |
 
 ### Constants
 

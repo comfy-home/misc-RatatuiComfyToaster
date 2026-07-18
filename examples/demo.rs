@@ -34,8 +34,9 @@ use ratatui::{
 
 use ratatui_comfy_toaster::{
     ToastBorderMode, ToastBuilder, ToastEngine, ToastEngineBuilder, ToastInteraction,
-    ToastPosition, ToastPreset, ToastProgressBarStyle, ToastShortcut, ToastType,
+    ToastPosition, ToastPreset, ToastProgressBarStyle, ToastShortcut, ToastType, ToastUpdate,
 };
+use std::time::Instant;
 
 // ---------------------------------------------------------------------------
 // Toast demo entries
@@ -46,6 +47,8 @@ struct ToastDemo {
     description: &'static str,
     code: &'static str,
     build: fn() -> Vec<ToastBuilder>,
+    update_after_secs: Option<u64>,
+    update_builder: Option<fn() -> ToastUpdate>,
 }
 
 const DEMOS: &[ToastDemo] = &[
@@ -54,6 +57,8 @@ const DEMOS: &[ToastDemo] = &[
         description: "Simple timed info toast with default settings (3s, bottom-right).",
         code: r#"ToastBuilder::new("File saved".into())"#,
         build: || vec![ToastBuilder::new("File saved".into())],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Success",
@@ -61,6 +66,8 @@ const DEMOS: &[ToastDemo] = &[
         code: r#"ToastBuilder::new("Build succeeded".into())
     .toast_type(ToastType::Success)"#,
         build: || vec![ToastBuilder::new("Build succeeded".into()).toast_type(ToastType::Success)],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Warning",
@@ -68,6 +75,8 @@ const DEMOS: &[ToastDemo] = &[
         code: r#"ToastBuilder::new("Low disk space".into())
     .toast_type(ToastType::Warning)"#,
         build: || vec![ToastBuilder::new("Low disk space".into()).toast_type(ToastType::Warning)],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Sticky Error",
@@ -82,6 +91,8 @@ const DEMOS: &[ToastDemo] = &[
                     .keep_on(1),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Compact Title",
@@ -96,6 +107,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Error),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Gapped Title",
@@ -110,6 +123,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Error),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Highlight Title",
@@ -126,6 +141,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Error),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Preset: GappedDotHighlightCenter",
@@ -140,6 +157,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Error),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Preset: CompactHighlightStart",
@@ -154,6 +173,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Error),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Progress Bar",
@@ -170,6 +191,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Info),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Progress Bar (HalfBlock)",
@@ -186,6 +209,8 @@ const DEMOS: &[ToastDemo] = &[
                     .duration(Duration::from_secs(5)),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Full Border",
@@ -200,6 +225,8 @@ const DEMOS: &[ToastDemo] = &[
                     .toast_type(ToastType::Success),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Top-Left Position",
@@ -207,6 +234,8 @@ const DEMOS: &[ToastDemo] = &[
         code: r#"ToastBuilder::new("Notification".into())
     .position(ToastPosition::TopLeft)"#,
         build: || vec![ToastBuilder::new("Notification".into()).position(ToastPosition::TopLeft)],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Center Position",
@@ -221,6 +250,8 @@ const DEMOS: &[ToastDemo] = &[
                     .duration(Duration::from_secs(2)),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Custom Offset",
@@ -228,6 +259,8 @@ const DEMOS: &[ToastDemo] = &[
         code: r#"ToastBuilder::new("Shifted toast".into())
     .offset(-5, 3)"#,
         build: || vec![ToastBuilder::new("Shifted toast".into()).offset(-5, 3)],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Long Message Wrap",
@@ -243,6 +276,8 @@ const DEMOS: &[ToastDemo] = &[
             ),
         ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Sticky + Progress",
@@ -260,6 +295,8 @@ ToastBuilder::new("Waiting for input...".into())
                     .toast_type(ToastType::Warning),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Custom Duration",
@@ -267,6 +304,8 @@ ToastBuilder::new("Waiting for input...".into())
         code: r#"ToastBuilder::new("Quick flash".into())
     .duration(Duration::from_secs(1))"#,
         build: || vec![ToastBuilder::new("Quick flash".into()).duration(Duration::from_secs(1))],
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "Sticky + Title + Highlight",
@@ -286,6 +325,8 @@ ToastBuilder::new("Waiting for input...".into())
                     .keep_on(1),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
     },
     ToastDemo {
         name: "★ Presentation: All Types",
@@ -344,12 +385,86 @@ vec![
                     .duration(Duration::from_secs(6)),
             ]
         },
+        update_after_secs: None,
+        update_builder: None,
+    },
+    ToastDemo {
+        name: "★ Live Update: Info → Success",
+        description: "Shows an info toast with progress bar, then after 5s updates it to success with 2s expiry.",
+        code: r#"// 1. Show info toast with 20s timeout + progress bar
+let id = engine.show_toast_with_id(
+    ToastBuilder::new("command: running...".into())
+        .toast_type(ToastType::Info)
+        .duration(Duration::from_secs(20))
+        .show_progress_bar(true),
+);
+
+// 2. After 5s, update to success with 2s expiry
+engine.update_toast_by_id(
+    id,
+    ToastUpdate::new()
+        .toast_type(ToastType::Success)
+        .message("command: SUCCESS")
+        .duration(Some(Duration::from_secs(2)))
+        .show_progress_bar(false),
+);"#,
+        build: || {
+            vec![
+                ToastBuilder::new("command: running...".into())
+                    .toast_type(ToastType::Info)
+                    .duration(Duration::from_secs(20))
+                    .show_progress_bar(true),
+            ]
+        },
+        update_after_secs: Some(5),
+        update_builder: Some(|| {
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("command: SUCCESS")
+                .duration(Some(Duration::from_secs(2)))
+                .show_progress_bar(false)
+        }),
+    },
+    ToastDemo {
+        name: "★ Dedup Counter",
+        description: "Fires 5 identical toasts rapidly — dedup consolidates them into one with a [4x] prefix.",
+        code: r#"// 5 identical toasts → dedup keeps 1, counter shows [4x]
+for _ in 0..5 {
+    engine.show_toast(
+        ToastBuilder::new("git: SUCCESS".into())
+            .toast_type(ToastType::Success)
+            .duration(Duration::from_secs(5)),
+    );
+}"#,
+        build: || {
+            vec![
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+                ToastBuilder::new("git: SUCCESS".into())
+                    .toast_type(ToastType::Success)
+                    .duration(Duration::from_secs(5)),
+            ]
+        },
+        update_after_secs: None,
+        update_builder: None,
     },
 ];
 
 // ---------------------------------------------------------------------------
 // App
 // ---------------------------------------------------------------------------
+
+type PendingUpdate = Option<(u64, Instant, fn() -> ToastUpdate)>;
 
 struct App {
     list_state: ListState,
@@ -358,6 +473,7 @@ struct App {
     last_interaction: String,
     list_area: Rect,
     progress_bar_style: ToastProgressBarStyle,
+    pending_update: PendingUpdate,
 }
 
 impl Default for App {
@@ -373,6 +489,7 @@ impl Default for App {
             last_interaction: String::new(),
             list_area: Rect::default(),
             progress_bar_style: ToastProgressBarStyle::HalfBlock,
+            pending_update: None,
         }
     }
 }
@@ -389,8 +506,16 @@ impl App {
         }
         let demo = &DEMOS[idx];
         let builders = (demo.build)();
+        let mut last_id = None;
         for builder in builders {
-            self.engine.show_toast(builder);
+            last_id = Some(self.engine.show_toast_with_id(builder));
+        }
+        if let (Some(id), Some(secs), Some(update_fn)) =
+            (last_id, demo.update_after_secs, demo.update_builder)
+        {
+            self.pending_update = Some((id, Instant::now() + Duration::from_secs(secs), update_fn));
+        } else {
+            self.pending_update = None;
         }
         self.last_toast_name = demo.name;
         self.last_interaction.clear();
@@ -401,6 +526,14 @@ impl App {
 
         loop {
             terminal.draw(|frame| self.draw(frame))?;
+
+            if let Some((id, when, update_fn)) = self.pending_update
+                && Instant::now() >= when
+            {
+                let update = update_fn();
+                self.engine.update_toast_by_id(id, update);
+                self.pending_update = None;
+            }
 
             if !event::poll(Duration::from_millis(50))? {
                 self.engine.tick();
