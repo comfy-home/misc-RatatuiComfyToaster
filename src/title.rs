@@ -141,8 +141,33 @@ pub fn line_separator(width: u16) -> String {
     "─".repeat(width.max(1) as usize)
 }
 
-pub fn contrasting_fg(_type_color: Color) -> Color {
-    Color::White
+pub fn contrasting_fg(type_color: Color) -> Color {
+    let (r, g, b) = match type_color {
+        Color::Rgb(r, g, b) => (r, g, b),
+        Color::Red => (170, 0, 0),
+        Color::Green => (0, 170, 0),
+        Color::Yellow => (170, 170, 0),
+        Color::Blue => (0, 0, 170),
+        Color::Cyan => (0, 170, 170),
+        Color::Magenta => (170, 0, 170),
+        _ => return Color::White,
+    };
+
+    let lin = |c: u8| {
+        let c = c as f32 / 255.0;
+        if c <= 0.03928 {
+            c / 12.92
+        } else {
+            ((c + 0.055) / 1.055).powf(2.4)
+        }
+    };
+
+    let luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    if luminance > 0.18 {
+        Color::Black
+    } else {
+        Color::White
+    }
 }
 
 #[cfg(test)]
@@ -161,5 +186,35 @@ mod tests {
         let compact = toast_content_rows(Some(&ToastTitle::compact("Title")), 1);
         let gapped = toast_content_rows(Some(&ToastTitle::gapped("Title")), 1);
         assert_eq!(gapped, compact + 1);
+    }
+
+    #[test]
+    fn contrasting_fg_yellow_returns_black() {
+        assert_eq!(contrasting_fg(Color::Yellow), Color::Black);
+    }
+
+    #[test]
+    fn contrasting_fg_green_returns_black() {
+        assert_eq!(contrasting_fg(Color::Green), Color::Black);
+    }
+
+    #[test]
+    fn contrasting_fg_blue_returns_white() {
+        assert_eq!(contrasting_fg(Color::Blue), Color::White);
+    }
+
+    #[test]
+    fn contrasting_fg_red_returns_white() {
+        assert_eq!(contrasting_fg(Color::Red), Color::White);
+    }
+
+    #[test]
+    fn contrasting_fg_white_rgb_returns_black() {
+        assert_eq!(contrasting_fg(Color::Rgb(255, 255, 255)), Color::Black);
+    }
+
+    #[test]
+    fn contrasting_fg_black_rgb_returns_white() {
+        assert_eq!(contrasting_fg(Color::Rgb(0, 0, 0)), Color::White);
     }
 }
