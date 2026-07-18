@@ -612,10 +612,11 @@ where
     ///
     /// Returns `true` if the toast was found and updated, `false` otherwise.
     pub fn update_toast_by_id(&mut self, id: u64, update: ToastUpdate) -> bool {
-        let Some(toast) = self.queue.iter_mut().find(|t| t.id == id) else {
+        let Some(idx) = self.queue.iter().position(|t| t.id == id) else {
             return false;
         };
 
+        let toast = &mut self.queue[idx];
         let mut needs_recalc = false;
 
         if let Some(msg) = update.message {
@@ -713,6 +714,50 @@ where
                 border_mode: toast.border_mode,
                 show_progress_bar: toast.show_progress_bar,
             });
+        }
+
+        // Post-update dedup: if another toast in the queue now matches
+        // (same message + type + title), remove the updated toast and
+        // refresh the other's expiry instead of showing duplicates.
+        if self.dedup_enabled {
+            let updated_msg = toast.message.clone();
+            let updated_type = toast.toast.type_;
+            let updated_title = toast.title.as_ref().map(|t| t.text.as_str().to_string());
+            let updated_expires_at = toast.expires_at;
+            let updated_duration = toast.duration;
+
+            let mut duplicate_pos = None;
+            for (i, other) in self.queue.iter().enumerate() {
+                if other.id == id {
+                    continue;
+                }
+                let other_title = other.title.as_ref().map(|t| t.text.as_str());
+                if other_title == updated_title.as_deref()
+                    && other.toast.type_ == updated_type
+                    && other.message == updated_msg
+                {
+                    duplicate_pos = Some(i);
+                    break;
+                }
+            }
+
+            if let Some(pos) = duplicate_pos
+                && let Some(other) = self.queue.get_mut(pos)
+                && !other.keep_on
+            {
+                if let Some(duration) = updated_duration {
+                    other.expires_at = Some(Instant::now() + duration);
+                } else if let Some(expires_at) = updated_expires_at {
+                    other.expires_at = Some(expires_at);
+                }
+            }
+
+            if duplicate_pos.is_some() {
+                // Remove the updated toast (it's now redundant).
+                if let Some(pos) = self.queue.iter().position(|t| t.id == id) {
+                    self.queue.remove(pos);
+                }
+            }
         }
 
         true
@@ -1784,5 +1829,50 @@ mod tests {
         let toast = engine.queue.front().unwrap();
         assert_eq!(toast.message, "msg", "empty update should be a no-op");
         assert_eq!(toast.toast.type_, ToastType::Info);
+    }
+
+    #[test]
+    fn update_dedup_consolidates_duplicate_after_update() {
+        let mut engine: ToastEngine<()> =
+            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+
+        // Two git commands with different args → two separate toasts
+        let id1 = engine.show_toast_with_id(
+            ToastBuilder::new("git log".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+        let id2 = engine.show_toast_with_id(
+            ToastBuilder::new("git tag".into())
+                .toast_type(ToastType::Info)
+                .duration(Duration::from_secs(20)),
+        );
+        assert_eq!(engine.queue_len(), 2);
+
+        // Both finish successfully → both updated to "git: SUCCESS"
+        engine.update_toast_by_id(
+            id1,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+        engine.update_toast_by_id(
+            id2,
+            ToastUpdate::new()
+                .toast_type(ToastType::Success)
+                .message("git: SUCCESS")
+                .duration(Some(Duration::from_secs(2))),
+        );
+
+        // Dedup should have consolidated → only 1 toast remains
+        assert_eq!(
+            engine.queue_len(),
+            1,
+            "duplicate toasts after update should be consolidated"
+        );
+        let toast = engine.queue.front().unwrap();
+        assert_eq!(toast.message, "git: SUCCESS");
+        assert_eq!(toast.toast.type_, ToastType::Success);
     }
 }
