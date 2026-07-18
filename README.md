@@ -557,26 +557,27 @@ engine.update_toast_by_id(
 
 ### Engine Methods
 
-| Method | Description |
-|--------|-------------|
-| `show_toast(builder)` | Enqueue a toast |
-| `show_toast_with_id(builder)` | Enqueue a toast, returns its unique `u64` ID |
-| `hide_toast()` / `dismiss()` | Dismiss front toast and advance queue |
-| `hide_toast_by_id(id)` | Dismiss a specific toast by its unique ID (tokio feature) |
-| `update_toast_by_id(id, update)` | Update a queued toast in-place by ID. See [`ToastUpdate`](#toast-update-builder) |
-| `has_toast()` | Check if any toast is queued |
-| `queue_len()` | Number of toasts currently queued |
-| `is_keep_on()` | Check if front toast is sticky |
-| `toast_area()` | Get front toast rectangle |
-| `contains(col, row)` | Check if point is inside front toast |
-| `handle_click(col, row, button)` | Handle mouse click |
-| `handle_shortcut(shortcut)` | Handle keyboard shortcut |
-| `set_dedup(bool)` | Enable/disable deduplication at runtime |
-| `set_dedup_count(bool)` | Enable/disable dedup counter prefix at runtime |
-| `set_default_progress_bar_style(style)` | Change default progress bar style at runtime |
-| `set_area(rect)` | Update display area |
-| `set_area_avoiding(rect, occupied)` | Update area with overlap avoidance |
-| `tick()` | Advance queue if front toast has expired |
+| Method                                  | Description                                                                      |
+| -----------------------------------------| ----------------------------------------------------------------------------------|
+| `show_toast(builder)`                   | Enqueue a toast                                                                  |
+| `show_toast_with_id(builder)`           | Enqueue a toast, returns its unique `u64` ID                                     |
+| `hide_toast()` / `dismiss()`            | Dismiss front toast and advance queue                                            |
+| `hide_toast_by_id(id)`                  | Dismiss a specific toast by its unique ID (tokio feature)                        |
+| `update_toast_by_id(id, update)`        | Update a queued toast in-place by ID. See [`ToastUpdate`](#toast-update-builder) |
+| `has_toast()`                           | Check if any toast is queued                                                     |
+| `queue_len()`                           | Number of toasts currently queued                                                |
+| `is_keep_on()`                          | Check if front toast is sticky                                                   |
+| `toast_area()`                          | Get front toast rectangle                                                        |
+| `toast_areas()`                         | Get all queued toast rectangles (front-to-back)                                  |
+| `contains(col, row)`                    | Check if point is inside front toast                                             |
+| `handle_click(col, row, button)`        | Handle mouse click                                                               |
+| `handle_shortcut(shortcut)`             | Handle keyboard shortcut                                                         |
+| `set_dedup(bool)`                       | Enable/disable deduplication at runtime                                          |
+| `set_dedup_count(bool)`                 | Enable/disable dedup counter prefix at runtime                                   |
+| `set_default_progress_bar_style(style)` | Change default progress bar style at runtime                                     |
+| `set_area(rect)`                        | Update display area                                                              |
+| `set_area_avoiding(rect, occupied)`     | Update area with overlap avoidance                                               |
+| `tick()`                                | Advance queue if front toast has expired                                         |
 
 ### Constants
 
