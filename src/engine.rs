@@ -528,6 +528,11 @@ where
             .unwrap_or_default()
     }
 
+    /// Get the areas of all queued toasts (front-to-back order).
+    pub fn toast_areas(&self) -> Vec<Rect> {
+        self.queue.iter().map(|toast| toast.area).collect()
+    }
+
     /// Whether a toast is currently being displayed.
     pub fn has_toast(&self) -> bool {
         !self.queue.is_empty()
