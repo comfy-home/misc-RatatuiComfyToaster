@@ -431,8 +431,11 @@ where
                         existing.expires_at = Some(Instant::now() + duration);
                     }
                     existing.dedup_count += 1;
-                    existing.toast.message =
-                        dedup_display_message(&existing.message, existing.dedup_count, existing.show_dedup_count);
+                    existing.toast.message = dedup_display_message(
+                        &existing.message,
+                        existing.dedup_count,
+                        existing.show_dedup_count,
+                    );
                     existing.area = calculate_toast_area_with_layout(ToastLayoutParams {
                         title: existing.title.as_ref(),
                         message: &existing.toast.message,
@@ -735,7 +738,9 @@ where
                 }
             }
             needs_recalc = true;
-        } else if update.keep_on.is_none() && let Some(show) = update.show_progress_bar {
+        } else if update.keep_on.is_none()
+            && let Some(show) = update.show_progress_bar
+        {
             toast.show_progress_bar = show && !toast.keep_on;
             needs_recalc = true;
         }
@@ -789,8 +794,11 @@ where
                     }
                 }
                 other.dedup_count += 1;
-                other.toast.message =
-                    dedup_display_message(&other.message, other.dedup_count, other.show_dedup_count);
+                other.toast.message = dedup_display_message(
+                    &other.message,
+                    other.dedup_count,
+                    other.show_dedup_count,
+                );
                 other.area = calculate_toast_area_with_layout(ToastLayoutParams {
                     title: other.title.as_ref(),
                     message: &other.toast.message,
@@ -1804,8 +1812,7 @@ mod tests {
 
     #[test]
     fn show_toast_returns_unique_id() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id1 = engine.show_toast_with_id(ToastBuilder::new("first".into()));
         let id2 = engine.show_toast_with_id(ToastBuilder::new("second".into()));
         assert_ne!(id1, id2, "each toast should get a unique ID");
@@ -1813,8 +1820,7 @@ mod tests {
 
     #[test]
     fn update_toast_changes_type_and_message() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id = engine.show_toast_with_id(
             ToastBuilder::new("git: running...".into())
                 .toast_type(ToastType::Info)
@@ -1839,11 +1845,9 @@ mod tests {
 
     #[test]
     fn update_toast_resets_expiry_on_duration_change() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id = engine.show_toast_with_id(
-            ToastBuilder::new("working".into())
-                .duration(Duration::from_secs(5)),
+            ToastBuilder::new("working".into()).duration(Duration::from_secs(5)),
         );
         let first_expiry = engine.queue.front().unwrap().expires_at.unwrap();
 
@@ -1863,8 +1867,7 @@ mod tests {
 
     #[test]
     fn update_toast_to_error_type() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id = engine.show_toast_with_id(
             ToastBuilder::new("git: running...".into())
                 .toast_type(ToastType::Info)
@@ -1888,16 +1891,14 @@ mod tests {
 
     #[test]
     fn update_toast_returns_false_for_unknown_id() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let result = engine.update_toast_by_id(999, ToastUpdate::new().message("nope"));
         assert!(!result, "should return false for unknown ID");
     }
 
     #[test]
     fn update_toast_noop_when_empty() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id = engine.show_toast_with_id(ToastBuilder::new("msg".into()));
 
         engine.update_toast_by_id(id, ToastUpdate::new());
@@ -1909,8 +1910,7 @@ mod tests {
 
     #[test]
     fn update_dedup_consolidates_duplicate_after_update() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
 
         // Two git commands with different args → two separate toasts
         let id1 = engine.show_toast_with_id(
@@ -1954,8 +1954,7 @@ mod tests {
 
     #[test]
     fn dedup_counter_increments_on_show() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.show_toast(ToastBuilder::new("msg".into()));
         engine.show_toast(ToastBuilder::new("msg".into()));
         engine.show_toast(ToastBuilder::new("msg".into()));
@@ -1967,8 +1966,7 @@ mod tests {
 
     #[test]
     fn dedup_counter_increments_on_update_consolidation() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         let id1 = engine.show_toast_with_id(
             ToastBuilder::new("git log".into())
                 .toast_type(ToastType::Info)
@@ -2015,8 +2013,7 @@ mod tests {
 
     #[test]
     fn dedup_counter_disabled_per_toast() {
-        let mut engine: ToastEngine<()> =
-            ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
+        let mut engine: ToastEngine<()> = ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
         engine.show_toast(ToastBuilder::new("msg".into()).show_dedup_count(false));
         engine.show_toast(ToastBuilder::new("msg".into()).show_dedup_count(false));
 
