@@ -381,7 +381,14 @@ where
     /// - If the queue is at `max_queue_depth` and the incoming toast is **timed**, it is displayed
     ///   as a temporary +1 beyond `max_queue_depth` and auto-expires normally. Sticky toasts are
     ///   never displaced by timed toasts.
-    pub fn show_toast(&mut self, toast: ToastBuilder) -> u64 {
+    pub fn show_toast(&mut self, toast: ToastBuilder) {
+        let _ = self.show_toast_with_id(toast);
+    }
+
+    /// Enqueue a toast and return its unique `u64` ID.
+    /// The ID can be used with [`update_toast_by_id`](Self::update_toast_by_id)
+    /// or [`hide_toast_by_id`](Self::hide_toast_by_id).
+    pub fn show_toast_with_id(&mut self, toast: ToastBuilder) -> u64 {
         let duration = toast.duration.unwrap_or(self.default_duration);
         let keep_on = toast.keep_on > 0;
 
@@ -1678,8 +1685,8 @@ mod tests {
     fn show_toast_returns_unique_id() {
         let mut engine: ToastEngine<()> =
             ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
-        let id1 = engine.show_toast(ToastBuilder::new("first".into()));
-        let id2 = engine.show_toast(ToastBuilder::new("second".into()));
+        let id1 = engine.show_toast_with_id(ToastBuilder::new("first".into()));
+        let id2 = engine.show_toast_with_id(ToastBuilder::new("second".into()));
         assert_ne!(id1, id2, "each toast should get a unique ID");
     }
 
@@ -1687,7 +1694,7 @@ mod tests {
     fn update_toast_changes_type_and_message() {
         let mut engine: ToastEngine<()> =
             ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
-        let id = engine.show_toast(
+        let id = engine.show_toast_with_id(
             ToastBuilder::new("git: running...".into())
                 .toast_type(ToastType::Info)
                 .duration(Duration::from_secs(20))
@@ -1713,7 +1720,7 @@ mod tests {
     fn update_toast_resets_expiry_on_duration_change() {
         let mut engine: ToastEngine<()> =
             ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
-        let id = engine.show_toast(
+        let id = engine.show_toast_with_id(
             ToastBuilder::new("working".into())
                 .duration(Duration::from_secs(5)),
         );
@@ -1737,7 +1744,7 @@ mod tests {
     fn update_toast_to_error_type() {
         let mut engine: ToastEngine<()> =
             ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
-        let id = engine.show_toast(
+        let id = engine.show_toast_with_id(
             ToastBuilder::new("git: running...".into())
                 .toast_type(ToastType::Info)
                 .duration(Duration::from_secs(20)),
@@ -1770,7 +1777,7 @@ mod tests {
     fn update_toast_noop_when_empty() {
         let mut engine: ToastEngine<()> =
             ToastEngineBuilder::new(Rect::new(0, 0, 80, 25)).build();
-        let id = engine.show_toast(ToastBuilder::new("msg".into()));
+        let id = engine.show_toast_with_id(ToastBuilder::new("msg".into()));
 
         engine.update_toast_by_id(id, ToastUpdate::new());
 
